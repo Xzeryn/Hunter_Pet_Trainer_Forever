@@ -667,6 +667,10 @@ function HPT:GetPetPoints()
 	if not UnitExists("pet") then
 		return 0, 0, 0
 	end
+	if not GetPetTrainingPoints then
+		local total = self:GetTheoryMaxTP(UnitLevel("pet"), self:GetPetLoyaltyLevel() or 1)
+		return total, total, 0
+	end
 	local total, spent = GetPetTrainingPoints()
 	total = total or 0
 	spent = spent or 0
@@ -807,15 +811,32 @@ function HPT:GetPetKnownRanks()
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("PLAYER_LOGIN")
-eventFrame:RegisterEvent("UNIT_PET")
-eventFrame:RegisterEvent("UNIT_PET_TRAINING_POINTS")
-eventFrame:RegisterEvent("CRAFT_SHOW")
-eventFrame:RegisterEvent("CRAFT_CLOSE")
-eventFrame:RegisterEvent("CRAFT_UPDATE")
-eventFrame:RegisterEvent("PET_BAR_UPDATE")
-eventFrame:RegisterEvent("SPELLS_CHANGED")
+
+-- Forever removed some TBC events (CRAFT_*); registering an unknown event errors and aborts the file.
+function HPT:RegisterEventIfValid(frame, event)
+	if C_EventUtils and C_EventUtils.IsEventValid then
+		if C_EventUtils.IsEventValid(event) then
+			frame:RegisterEvent(event)
+			return true
+		end
+		return false
+	end
+	return pcall(frame.RegisterEvent, frame, event)
+end
+
+for _, event in ipairs({
+	"ADDON_LOADED",
+	"PLAYER_LOGIN",
+	"UNIT_PET",
+	"UNIT_PET_TRAINING_POINTS",
+	"CRAFT_SHOW",
+	"CRAFT_CLOSE",
+	"CRAFT_UPDATE",
+	"PET_BAR_UPDATE",
+	"SPELLS_CHANGED",
+}) do
+	HPT:RegisterEventIfValid(eventFrame, event)
+end
 
 eventFrame:SetScript("OnEvent", function(_, event, arg1)
 	if event == "ADDON_LOADED" and arg1 == "Hunter_Pet_Trainer_Forever" then

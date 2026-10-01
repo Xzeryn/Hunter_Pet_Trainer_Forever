@@ -14,7 +14,7 @@ HPT.apply = {
 }
 
 local function GetSpent()
-	local total, spent = GetPetTrainingPoints()
+	local _, total, spent = HPT:GetPetPoints()
 	return spent or 0, total or 0
 end
 
