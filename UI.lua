@@ -25,6 +25,13 @@ local function FlatBackdrop()
 	}
 end
 
+-- EllesmereUI skinning removes the backdrop; hover borders then do nothing.
+local function SetFlatBorder(btn, shade)
+	if btn.backdropInfo then
+		btn:SetBackdropBorderColor(shade, shade, shade, 1)
+	end
+end
+
 local function StyleFlatButton(btn, width, height)
 	btn:SetSize(width, height)
 	btn:SetBackdrop(FlatBackdrop())
@@ -36,10 +43,10 @@ local function StyleFlatButton(btn, width, height)
 		ht:SetVertexColor(1, 1, 1, 0.08)
 	end
 	btn:SetScript("OnEnter", function(self)
-		self:SetBackdropBorderColor(0.55, 0.55, 0.55, 1)
+		SetFlatBorder(self, 0.55)
 	end)
 	btn:SetScript("OnLeave", function(self)
-		self:SetBackdropBorderColor(0.38, 0.38, 0.38, 1)
+		SetFlatBorder(self, 0.38)
 	end)
 end
 
@@ -731,14 +738,14 @@ function HPT:CreateUI()
 	end
 	templateMenuBtn:SetScript("OnClick", ShowTemplateActions)
 	templateMenuBtn:SetScript("OnEnter", function(self)
-		self:SetBackdropBorderColor(0.55, 0.55, 0.55, 1)
+		SetFlatBorder(self, 0.55)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 		GameTooltip:SetText("Template actions")
 		GameTooltip:AddLine("New / Apply / Save As / …", 0.8, 0.8, 0.8)
 		GameTooltip:Show()
 	end)
 	templateMenuBtn:SetScript("OnLeave", function(self)
-		self:SetBackdropBorderColor(0.38, 0.38, 0.38, 1)
+		SetFlatBorder(self, 0.38)
 		GameTooltip_Hide()
 	end)
 
@@ -1017,6 +1024,9 @@ function HPT:CreateUI()
 	self.frame = f
 	familyDrop:SetText(self:GetActiveTemplate().family)
 	self:LayoutAbilityRows()
+	if self.ApplySkin then
+		self:ApplySkin()
+	end
 end
 
 function HPT:LayoutAbilityRows()
@@ -1088,6 +1098,9 @@ function HPT:SetPlannerEmbedded(embedded)
 		return
 	end
 	f.embedded = embedded and true or false
+	if f.skinShell then
+		f.skinShell:SetShown(not embedded)
+	end
 	if embedded then
 		f:SetBackdrop(nil)
 		f:SetMovable(false)
@@ -1164,7 +1177,7 @@ function HPT:SetPlannerEmbedded(embedded)
 			f.RefreshTemplateDrop()
 		end
 	else
-		if f.standaloneBackdrop then
+		if f.standaloneBackdrop and not f.skinShell then
 			f:SetBackdrop(f.standaloneBackdrop)
 		end
 		f:SetMovable(true)

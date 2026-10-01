@@ -30,8 +30,10 @@ function HPT:CreateTrainerDock()
 	local title = dock:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", 14, -10)
 	title:SetText("Hunter Pet Trainer")
+	dock.title = title
 
 	local close = CreateFrame("Button", nil, dock, "UIPanelCloseButton")
+	dock.closeBtn = close
 	close:SetPoint("TOPRIGHT", -2, -2)
 	close:SetScript("OnClick", function()
 		HPT.dockDismissed = true
@@ -45,6 +47,7 @@ function HPT:CreateTrainerDock()
 	local footerBg = footer:CreateTexture(nil, "BACKGROUND")
 	footerBg:SetAllPoints()
 	footerBg:SetColorTexture(0.1, 0.1, 0.1, 1)
+	footer.bg = footerBg
 	dock.footer = footer
 
 	local nextLabel = footer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -69,6 +72,9 @@ function HPT:CreateTrainerDock()
 	dock.host = host
 
 	self.dock = dock
+	if self.ApplySkin then
+		self:ApplySkin()
+	end
 	return dock
 end
 

@@ -4,6 +4,7 @@
 ## Author: Xzeryn
 ## Version: 0.1.0
 ## SavedVariables: HunterPetTrainerForeverDB
+## OptionalDeps: EllesmereUI
 
 Data.lua
 SpellIds.lua
@@ -15,3 +16,4 @@ WowheadImport.lua
 UI.lua
 TrainerOverlay.lua
 TrainNext.lua
+Skin.lua

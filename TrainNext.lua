@@ -231,6 +231,7 @@ function HPT:CreateTrainNextButton(parent)
 	local fill = glow:CreateTexture(nil, "BACKGROUND")
 	fill:SetAllPoints()
 	fill:SetColorTexture(1, 0.82, 0, 0.12)
+	glow.fill = fill
 	local pulse = glow:CreateAnimationGroup()
 	pulse:SetLooping("BOUNCE")
 	local fade = pulse:CreateAnimation("Alpha")
@@ -240,6 +241,8 @@ function HPT:CreateTrainNextButton(parent)
 	pulse:Play()
 	glow:Hide()
 
+	HPT.trainNextButton = button
+	HPT.trainNextGlow = glow
 	return button
 end
 

@@ -305,8 +305,10 @@ function HPT:CreateDevWindow()
 		end },
 	}
 	local prev
+	f.buttons = {}
 	for _, def in ipairs(buttons) do
 		local b = MakeButton(f, def[1], def[2], def[3])
+		table.insert(f.buttons, b)
 		if prev then
 			b:SetPoint("LEFT", prev, "RIGHT", 4, 0)
 		else
@@ -339,6 +341,9 @@ function HPT:CreateDevWindow()
 	f.edit = edit
 
 	self.devFrame = f
+	if self.ApplySkin then
+		self:ApplySkin()
+	end
 	f:Hide()
 	f:SetScript("OnShow", function()
 		HPT:RefreshDevWindow()
