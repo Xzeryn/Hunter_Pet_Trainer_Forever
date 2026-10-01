@@ -35,31 +35,11 @@ function HPT:StopApply(reason)
 	end
 end
 
--- Select a craft line only. Never call DoCraft / CraftCreateButton:Click —
--- both are protected (ADDON_ACTION_FORBIDDEN) on TBC Anniversary.
+-- Records the planned step only. Selecting a trainer row from addon code taints Train
+-- (ADDON_ACTION_FORBIDDEN), so the player or a secure button must make the selection.
 function HPT:SelectTrainTarget(entry)
 	if not entry or not entry.index then
 		return false
-	end
-	if CraftFrame then
-		CraftFrame:Raise()
-	end
-	if SelectCraft then
-		pcall(SelectCraft, entry.index)
-	end
-	-- Blizzard UI enables/disables Train from SetSelection; SelectCraft alone often leaves it grey
-	if CraftFrame_SetSelection then
-		pcall(CraftFrame_SetSelection, entry.index)
-	elseif CraftFrame_Update then
-		pcall(CraftFrame_Update)
-	end
-	local btn = _G.CraftCreateButton
-	if btn then
-		-- Force enable for a known-good plan step; Blizzard may leave it disabled after a train
-		btn:Enable()
-	end
-	if self.CaptureCraftTrainButton then
-		self:CaptureCraftTrainButton()
 	end
 	self.apply.lastIndex = entry.index
 	self.apply.pendingAbility = entry.ability
@@ -131,7 +111,7 @@ function HPT:ApplyNext()
 
 	local template = self:GetActiveTemplate()
 	local desired = template.ranks[step.ability] or step.desired
-	local entry, reason = self:FindBestCraftForAbility(step.ability, desired)
+	local entry, reason = self:FindBestTrainerEntry(step.ability, desired)
 	if not entry or reason ~= "ok" then
 		self:Print("Skip %s: %s", step.ability, reason or "unavailable")
 		self.apply.waiting = false
@@ -141,7 +121,7 @@ function HPT:ApplyNext()
 
 	self:SelectTrainTarget(entry)
 	local left = #self.apply.queue - self.apply.step + 1
-	self:Print("Selected |cffffffff%s rank %d|r — click |cffffff00Train|r. (%d left)",
+	self:Print("Next: |cffffffff%s rank %d|r — select it in the trainer and click |cffffff00Train|r. (%d left)",
 		entry.ability, entry.rank, left)
 	if self.UpdateCraftNextLabel then
 		self:UpdateCraftNextLabel()
@@ -155,11 +135,11 @@ function HPT:OnApplyEvent(event)
 	if not self.apply.active or not self.apply.waiting then
 		return
 	end
-	if event == "CRAFT_CLOSE" then
-		-- Overlay hide handles stop; avoid double messages
+	if event == "TRAINER_CLOSED" then
+		self:StopApply("Beast Training closed — apply stopped.")
 		return
 	end
-	if event ~= "UNIT_PET_TRAINING_POINTS" and event ~= "CRAFT_UPDATE" and event ~= "PET_BAR_UPDATE" then
+	if event ~= "TRAINER_UPDATE" and event ~= "PET_BAR_UPDATE" and event ~= "SPELLS_CHANGED" then
 		return
 	end
 

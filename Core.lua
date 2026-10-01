@@ -784,13 +784,13 @@ local function ParseRankFromSubText(sub)
 	return n
 end
 
-local function EnsureScanTooltip()
-	if HPT.scanTip then
-		return HPT.scanTip
+function HPT:EnsureScanTooltip()
+	if self.scanTip then
+		return self.scanTip
 	end
 	local tip = CreateFrame("GameTooltip", "HunterPetTrainerScanTooltip", nil, "GameTooltipTemplate")
 	tip:SetOwner(UIParent, "ANCHOR_NONE")
-	HPT.scanTip = tip
+	self.scanTip = tip
 	return tip
 end
 
@@ -837,7 +837,7 @@ local function RankFromPetBookSlot(index, book, abilityName, sub)
 		return fromSub
 	end
 
-	local tip = EnsureScanTooltip()
+	local tip = HPT:EnsureScanTooltip()
 	tip:ClearLines()
 	tip:SetOwner(UIParent, "ANCHOR_NONE")
 	local ok = false
@@ -891,7 +891,7 @@ end
 
 -- spellId -> { ability, rank } from generated data
 local rankBySpellId
-local function RankForSpellId(spellId)
+function HPT:RankForSpellId(spellId)
 	if not rankBySpellId then
 		rankBySpellId = {}
 		for ability, info in pairs(D.Abilities) do
@@ -943,7 +943,7 @@ function HPT:GetPetKnownRanks()
 	end
 	for i = 1, num do
 		local name, sub, spellId, book = PetBookSlot(i)
-		local byId = type(spellId) == "number" and RankForSpellId(spellId)
+		local byId = type(spellId) == "number" and self:RankForSpellId(spellId)
 		if byId then
 			known[byId.ability] = math.max(known[byId.ability] or 0, byId.rank)
 		elseif name and D.Abilities[name] then
@@ -951,6 +951,11 @@ function HPT:GetPetKnownRanks()
 			if rank and rank > 0 then
 				known[name] = math.max(known[name] or 0, rank)
 			end
+		end
+	end
+	if self.GetKnownTrainerRanks then
+		for ability, rank in pairs(self:GetKnownTrainerRanks()) do
+			known[ability] = math.max(known[ability] or 0, rank)
 		end
 	end
 	return known
@@ -975,9 +980,6 @@ for _, event in ipairs({
 	"PLAYER_LOGIN",
 	"UNIT_PET",
 	"UNIT_PET_TRAINING_POINTS",
-	"CRAFT_SHOW",
-	"CRAFT_CLOSE",
-	"CRAFT_UPDATE",
 	"PET_BAR_UPDATE",
 	"SPELLS_CHANGED",
 	"TRAINER_SHOW",
@@ -1005,27 +1007,35 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 			-- Identity check inside Sync resets plan when the animal changes
 			HPT:SyncCurrentPetPlanFromPet(false)
 		end
-		if HPT.OnCraftEvent then HPT:OnCraftEvent(event) end
 		if HPT.OnApplyEvent then HPT:OnApplyEvent(event) end
 		if HPT.UpdateUI then HPT:UpdateUI() end
 	elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" or event == "TRAINER_CLOSED" then
 		HPT:EnsureBlizzardHooks()
+		HPT:InvalidateTrainerCache()
+		if event == "TRAINER_CLOSED" then
+			HPT:RestoreTrainerFilters()
+		end
 		-- The TP label is filled in after the event; read it on the next frame.
 		C_Timer.After(0.1, function()
+			if event == "TRAINER_SHOW" then
+				HPT:ShowAllTrainerFilters()
+			end
+			HPT:InvalidateTrainerCache()
 			HPT:RecordTrainerPoints()
+			if event ~= "TRAINER_CLOSED" and UnitExists("pet") then
+				HPT:SyncCurrentPetPlanFromPet(false)
+			end
+			if HPT.OnApplyEvent then
+				HPT:OnApplyEvent(event)
+			end
 			if HPT.UpdateUI then
 				HPT:UpdateUI()
 			end
 		end)
-	elseif event == "CRAFT_SHOW" or event == "CRAFT_UPDATE" or event == "CRAFT_CLOSE"
-		or event == "UNIT_PET_TRAINING_POINTS" or event == "PET_BAR_UPDATE"
-		or event == "SPELLS_CHANGED" then
+	elseif event == "UNIT_PET_TRAINING_POINTS" or event == "PET_BAR_UPDATE" or event == "SPELLS_CHANGED" then
 		-- Pet book often populates after UNIT_PET; re-clamp trained floors
 		if (event == "PET_BAR_UPDATE" or event == "SPELLS_CHANGED") and UnitExists("pet") then
 			HPT:SyncCurrentPetPlanFromPet(false)
-		end
-		if HPT.OnCraftEvent then
-			HPT:OnCraftEvent(event)
 		end
 		if HPT.OnApplyEvent then
 			HPT:OnApplyEvent(event)
@@ -1055,6 +1065,9 @@ SlashCmdList.HUNTERPETTRAINER = function(msg)
 		HPT:Echo("  /hpt templates - list saved templates")
 		HPT:Echo("  /hpt apply <name> - copy a saved template onto Current Pet")
 		HPT:Echo("  /hpt debug - toggle diagnostic chat messages")
+		HPT:Echo("  /hpt dev - developer window with copyable reports")
+	elseif msg == "dev" then
+		HPT:ToggleDevWindow()
 	elseif msg == "debug" then
 		HPT.DEBUG = not HPT.DEBUG
 		HPT:Echo("Debug chat %s.", HPT.DEBUG and "ON" or "OFF")

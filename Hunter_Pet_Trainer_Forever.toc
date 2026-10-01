@@ -8,7 +8,8 @@
 Data.lua
 SpellIds.lua
 Core.lua
-Craft.lua
+Trainer.lua
+Dev.lua
 Apply.lua
 WowheadImport.lua
 UI.lua

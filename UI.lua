@@ -1380,6 +1380,8 @@ function HPT:UpdateUI()
 			status = "|cffff9900Summon a pet to train from Current Pet.|r"
 		elseif not craftOpen then
 			status = "Open |cffffff00Beast Training|r to assist Train from Current Pet."
+		elseif not select(2, self:GetTrainerFilterState()) then
+			status = "|cffff9900Tick every Filters option in Beast Training so all ranks are listed.|r"
 		else
 			status = ""
 		end
@@ -1404,8 +1406,9 @@ function HPT:UpdateUI()
 
 	self:LayoutAbilityRows()
 
-	-- Exact craft ranks known (Beast Training list); nil when craft UI closed
-	local hunterCraftRankSet = craftOpen and self:GetKnownCraftRankSet() or nil
+	-- Ranks the trainer lists; nil when closed or a filter hides rows (can't tell "not known" from "hidden")
+	local filtersAllOn = select(2, self:GetTrainerFilterState())
+	local hunterCraftRankSet = craftOpen and filtersAllOn and self:GetTrainerRankSet() or nil
 	local showPet = self:IsShowPetTrained()
 	-- Live pet ranks for compare overlay (optional for theory-crafting)
 	local displayPetRanks = showPet and petRanks or {}

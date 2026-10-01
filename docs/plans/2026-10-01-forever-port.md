@@ -48,6 +48,12 @@
 | Stable loyalty | `PetStableLoyaltyText:GetText()` = `"Dependable"`; the number badge is `PetStableFrame.loyaltyLevel.levelText:GetText()` = `"4"` (only while the stable is open). Use it to check the name-to-level map | Stable screenshot, frame search |
 | Stable slots | Current pet plus 2 stable slots (second costs 5 gold) | Stable screenshot |
 
+**Three windows share `ClassTrainerFrame` (October 1, `/hpt dev` reports):**
+- *Beast Training spell* — the pet learns; cost is TP, level is pet level, `"used"` = the pet knows it. Only here is `ClassTrainerFrameTrainingPointsLabel` actually on screen (`IsVisible()`).
+- *Pet trainer NPC* — the hunter learns Great Stamina, Natural Armor, Growl and the resistances for gold. Cost is copper, level is hunter level, `"used"` = the hunter knows it. 45 rows; levels and spell IDs match `Data.lua` except Shadow Resistance 4 (trainer 50, data 40; recheck in Beast Training before changing).
+- *Hunter class trainer* — hunter spells, none in `Data.lua`.
+At both NPCs the TP label reports `IsShown() = true` with stale text but `IsVisible()` is false. `SetTrainerServiceTypeFilter` needs a boolean (`1` errors "Missing on/off parameter").
+
 Confirmed trainer costs (use as data checks): Great Stamina 1 = 5 TP (level 1), Great Stamina 2 = 10 TP (level 12), Natural Armor 1 = 1 TP (level 1), Natural Armor 2 = 5 TP (level 12).
 
 **Max TP formula confirmed:** after a pet talent reset, Loxley (level 10, Dependable = 4) shows 30 TP = level × (loyalty − 1). Known rows display cost 0; unlearned rows show real costs: Cower 1 = 8 TP (level 5), Bite 2 = 4 (level 8), Claw 2 = 4 (level 8), Growl 1 and 2 = 0 (Growl 2 level 10). Before the reset he had 14 left, and 8 + 4 + 4 + 0 = 16 spent, which matches.
@@ -63,9 +69,9 @@ These don't block Tasks 1–3, but they decide how Tasks 4–6 are built. Each i
 - [x] **0.1 Why training failed.** Resolved October 1: training works by hand. Earlier failures came from test commands tainting the trainer selection. Addon-made selections can't be trained (see the findings table), which reshapes Task 6.
 - [x] **0.1b Secure row click.** Works (October 1, `HPT_ClickTest`). A `SecureActionButtonTemplate` button with `type = "click"` and `clickbutton = <row frame>` selects the row with 0 addon-marked fields; a mouse click on Train then trained Growl 1. Rows are found by scanning `ClassTrainerFrame.ScrollBox.ScrollTarget` children for the ability name and rank text.
   - The one-press macro (`/click <row alias>` then `/click ClassTrainerTrainButton`) is **unsafe**: it trained Natural Armor 1 instead of Growl 2. The row click did nothing, and Train bought whatever Blizzard had auto-selected. Never ship it. It does show that a secure-macro `/click ClassTrainerTrainButton` is not blocked.
-- [ ] **0.1c Filters and taint.** Check whether calling `SetTrainerServiceTypeFilter` from addon code also taints the trainer (train by hand afterwards and watch BugSack). If it does, Task 4 must not change filters and should ask you to tick them instead.
+- [x] **0.1c Filters and taint.** Resolved October 1: the addon set the `used` filter, the taint check found 0 marked fields, and a hand Train of Bite 2 worked. Task 4 now ticks all filters on Beast Training open and restores them on close. Original check: calling `SetTrainerServiceTypeFilter` from addon code also taints the trainer (train by hand afterwards and watch BugSack). If it does, Task 4 must not change filters and should ask you to tick them instead.
 - [ ] **0.2 Max TP formula.** Only one pet so far. At each level-up or loyalty change, record level, loyalty, the trainer's "Training Points" value and anything trained since the last record.
-- [ ] **0.3 Pet trainer vs class trainer.** Hunters also use `ClassTrainerFrame` at their class trainer. Open the hunter class trainer and run
+- [x] **0.3 Pet trainer vs class trainer.** Resolved October 1: the TP label is `IsVisible()` only in the Beast Training spell window (see "Three windows" above). Beast Training also lists known ranks as `"available"` with cost 0, and charges the upgrade cost (`cost(target) - cost(known)`), e.g. Great Stamina 2 = 5 with rank 1 known. Original check: Hunters also use `ClassTrainerFrame` at their class trainer. Open the hunter class trainer and run
   `/dump ClassTrainerFrameTrainingPointsLabel:IsShown(), GetTrainerServiceInfo(1)`
   If the TP label is hidden there and shown at the pet trainer, that is how the addon tells them apart.
 - [ ] **0.4 Stable master.** With the stable open: `/dump PetStableLoyaltyText and PetStableLoyaltyText:GetText()` and screenshot the stable. Tells us whether loyalty is shown as a number there and whether the stable lists all three slots' level and loyalty.
@@ -223,6 +229,8 @@ end
 ---
 
 ## Task 4 — Read the pet trainer (replaces `Craft.lua`)
+
+**Status (October 1):** built, awaiting in-game test. `Trainer.lua` reads entries (cached until the next `TRAINER_*` event), merges `"used"` rows into known ranks, and shows `SetTrainerService` tooltips. Filters are **not** changed automatically until 0.1c is answered; the window asks you to tick them instead, and "not known" marks are skipped while any filter is off. Added `Dev.lua` (`/hpt dev`): Trainer, Pet, Taint and Filter-test reports plus an event log, written to a copyable text box that survives `/reload`. `ADDON_ACTION_FORBIDDEN/BLOCKED` and "learned" system messages are always logged there. It covers Phase 0.1c, 0.3, 0.5 and 0.6 and the owl family check.
 
 **Files**
 - Create: `Trainer.lua` (replaces `Craft.lua` in the `.toc`).
