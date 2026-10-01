@@ -400,6 +400,21 @@ function HPT:CreateUI()
 	tpBg:SetColorTexture(0.15, 0.15, 0.15, 1)
 	f.tpBar = tpBar
 
+	local tpHit = CreateFrame("Frame", nil, calc)
+	tpHit:SetPoint("TOPLEFT", tpBar, "TOPLEFT", 0, 4)
+	tpHit:SetPoint("BOTTOMRIGHT", tpValue, "BOTTOMRIGHT", 0, -4)
+	tpHit:EnableMouse(true)
+	tpHit:SetScript("OnEnter", function(self)
+		if not f.tpNote then
+			return
+		end
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText("Training points")
+		GameTooltip:AddLine(f.tpNote, 0.9, 0.9, 0.9, true)
+		GameTooltip:Show()
+	end)
+	tpHit:SetScript("OnLeave", GameTooltip_Hide)
+
 	levelStep.minus:SetScript("OnClick", function()
 		local t = HPT:GetActiveTemplate()
 		if t.isCurrentPet then return end
@@ -1228,7 +1243,7 @@ function HPT:UpdateUI()
 	local t = self:GetActiveTemplate()
 	self:SanitizeTemplateForFamily(t)
 	local petRanks = self:GetPetKnownRanks()
-	local usable, totalTP, spentTP = self:GetPetPoints()
+	local usable, totalTP, spentTP, pointsSource = self:GetPetPoints()
 	local cost = self:GetTemplateCost(t)
 	local remaining = self:GetTemplateRemainingCost(t, petRanks)
 	local craftOpen = self:IsBeastTrainingOpen()
@@ -1279,7 +1294,7 @@ function HPT:UpdateUI()
 				if loyalty then
 					loyaltyText = ("%d %s"):format(loyalty, self:LoyaltyName(loyalty))
 				else
-					loyaltyText = "?"
+					loyaltyText = "|cff888888open Pet tab|r"
 				end
 			else
 				levelText = "—"
@@ -1330,12 +1345,19 @@ function HPT:UpdateUI()
 				self.frame.tpBar:SetStatusBarColor(0.3, 0.75, 0.3, 1)
 			end
 		end
+		self.frame.tpNote = nil
 		if self.frame.tpValue then
 			if not isCurrent or UnitExists("pet") then
-				if overBudget then
-					self.frame.tpValue:SetText(("|cffff4444%d|r / %d"):format(used, maxTP))
-				else
-					self.frame.tpValue:SetText(("|cffffffff%d|r / %d"):format(used, maxTP))
+				local live = not isCurrent or pointsSource == "trainer"
+				local usedColor = overBudget and "ff4444" or (live and "ffffff" or "999999")
+				local maxColor = live and "" or "|cff999999"
+				self.frame.tpValue:SetText(("|cff%s%d|r / %s%d|r"):format(usedColor, used, maxColor, maxTP))
+				if isCurrent and not loyalty then
+					self.frame.tpNote = "Open the Pet tab of the Character window once so the addon can read loyalty."
+				elseif pointsSource == "cached" then
+					self.frame.tpNote = "Spent TP is from your last visit to the pet trainer. It updates the next time you open Beast Training."
+				elseif pointsSource == "estimate" then
+					self.frame.tpNote = "Spent TP is unknown until you open Beast Training at a pet trainer with this pet."
 				end
 			else
 				self.frame.tpValue:SetText("— / —")

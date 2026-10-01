@@ -144,6 +144,8 @@ D.Abilities["Natural Armor"] = {
 
 ## Task 3 — Live pet stats without the removed functions
 
+**Status (October 1):** built. Loyalty is captured by hooking `PetLoyaltyText:SetText` (the Pet tab text is only fresh when Blizzard sets it) and stored per pet in `db.petStats[Name|Family]`. Remaining TP is read from `ClassTrainerFrameTrainingPointsLabel` via a hook on `ClassTrainerFrame_UpdateTrainingPoints` plus `TRAINER_SHOW/UPDATE`; spent TP is stored per pet. `GetPetPoints` returns a 4th value, `source` = `"trainer"`, `"cached"` or `"estimate"`; the bar greys out and explains itself when not live. Known ranks match pet spellbook entries by spell ID first (classic globals or `C_SpellBook`).
+
 **Files**
 - Modify: `Core.lua` — `LOYALTY_NAMES`, `GetPetLoyaltyLevel`, `GetPetPoints`, `GetPetKnownRanks`.
 

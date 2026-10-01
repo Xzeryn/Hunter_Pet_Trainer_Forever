@@ -14,9 +14,9 @@ HPT.DEBUG = false
 local LOYALTY_NAMES = {
 	[1] = "Rebellious",
 	[2] = "Unruly",
-	[3] = "Discontented",
-	[4] = "Content",
-	[5] = "Warm",
+	[3] = "Submissive",
+	[4] = "Dependable",
+	[5] = "Faithful",
 	[6] = "Best Friend",
 }
 
@@ -98,10 +98,40 @@ function HPT:ParseLoyaltyValue(v)
 	return nil
 end
 
+-- Per-pet values seen in Blizzard UI, keyed by GetLivePetIdentity().
+-- Forever has no loyalty / TP functions, so these survive /reload and pet swaps.
+function HPT:GetPetStats(identity)
+	identity = identity or self:GetLivePetIdentity()
+	if not identity then
+		return nil
+	end
+	local db = self:GetDB()
+	db.petStats = db.petStats or {}
+	db.petStats[identity] = db.petStats[identity] or {}
+	return db.petStats[identity]
+end
+
+-- Forever: the Pet tab's PetLoyaltyText ("Dependable"). It is only refreshed while
+-- Blizzard updates the Pet tab, so read it from the SetText hook, not on demand.
+function HPT:RecordPetLoyaltyText(text)
+	local level = self:ParseLoyaltyValue(text)
+	local stats = level and UnitExists("pet") and self:GetPetStats()
+	if stats and stats.loyalty ~= level then
+		stats.loyalty = level
+		if self.UpdateUI then
+			self:UpdateUI()
+		end
+	end
+end
+
 -- Live pet loyalty only. Never falls back to theory / Best Friend.
 function HPT:GetPetLoyaltyLevel()
 	if not UnitExists("pet") then
 		return nil
+	end
+	local stats = self:GetPetStats()
+	if stats and stats.loyalty then
+		return stats.loyalty
 	end
 	if GetPetLoyalty then
 		local n = self:ParseLoyaltyValue(GetPetLoyalty())
@@ -669,18 +699,80 @@ function HPT:SanitizeTemplateForFamily(template)
 	return changed
 end
 
+-- Forever: remaining TP is only shown in the pet trainer's label ("Training Points: 14").
+function HPT:GetTrainerPointsRemaining()
+	local label = _G.ClassTrainerFrameTrainingPointsLabel
+	if not label or not label:IsVisible() then
+		return nil
+	end
+	local text = label:GetText()
+	return text and tonumber(text:match("(%d+)%s*$"))
+end
+
+function HPT:RecordTrainerPoints()
+	local remaining = self:GetTrainerPointsRemaining()
+	local stats = remaining and UnitExists("pet") and self:GetPetStats()
+	if not stats then
+		return
+	end
+	local loyalty = self:GetPetLoyaltyLevel()
+	stats.remaining = remaining
+	stats.level = UnitLevel("pet")
+	if loyalty then
+		stats.spent = math.max(0, self:GetTheoryMaxTP(stats.level, loyalty) - remaining)
+	end
+end
+
+-- Returns remaining, total, spent, source.
+-- source: "trainer" (live label), "cached" (spent from the last trainer visit), "estimate" (nothing seen yet).
 function HPT:GetPetPoints()
 	if not UnitExists("pet") then
-		return 0, 0, 0
+		return 0, 0, 0, "estimate"
 	end
-	if not GetPetTrainingPoints then
-		local total = self:GetTheoryMaxTP(UnitLevel("pet"), self:GetPetLoyaltyLevel() or 1)
-		return total, total, 0
+	if GetPetTrainingPoints then
+		local total, spent = GetPetTrainingPoints()
+		total = total or 0
+		spent = spent or 0
+		return total - spent, total, spent, "trainer"
 	end
-	local total, spent = GetPetTrainingPoints()
-	total = total or 0
-	spent = spent or 0
-	return total - spent, total, spent
+	local loyalty = self:GetPetLoyaltyLevel()
+	local total = loyalty and self:GetTheoryMaxTP(UnitLevel("pet"), loyalty) or 0
+	local live = self:GetTrainerPointsRemaining()
+	if live then
+		local liveTotal = loyalty and total or live
+		return live, liveTotal, math.max(0, liveTotal - live), "trainer"
+	end
+	local stats = self:GetPetStats()
+	if stats and stats.spent then
+		return math.max(0, total - stats.spent), total, stats.spent, "cached"
+	end
+	return total, total, 0, "estimate"
+end
+
+-- Hook Blizzard text updates so values are captured the moment Blizzard sets them.
+-- hooksecurefunc never taints the hooked frame.
+function HPT:EnsureBlizzardHooks()
+	if not self.hookedLoyaltyText and _G.PetLoyaltyText then
+		hooksecurefunc(_G.PetLoyaltyText, "SetText", function(_, text)
+			HPT:RecordPetLoyaltyText(text)
+		end)
+		hooksecurefunc(_G.PetLoyaltyText, "SetFormattedText", function(fs)
+			HPT:RecordPetLoyaltyText(fs:GetText())
+		end)
+		self.hookedLoyaltyText = true
+		if _G.PetLoyaltyText:IsVisible() then
+			self:RecordPetLoyaltyText(_G.PetLoyaltyText:GetText())
+		end
+	end
+	if not self.hookedTrainerPoints and _G.ClassTrainerFrame_UpdateTrainingPoints then
+		hooksecurefunc("ClassTrainerFrame_UpdateTrainingPoints", function()
+			HPT:RecordTrainerPoints()
+			if HPT.UpdateUI then
+				HPT:UpdateUI()
+			end
+		end)
+		self.hookedTrainerPoints = true
+	end
 end
 
 local function ParseRankFromSubText(sub)
@@ -797,16 +889,64 @@ local function RankFromPetBookSlot(index, book, abilityName, sub)
 	return nil
 end
 
+-- spellId -> { ability, rank } from generated data
+local rankBySpellId
+local function RankForSpellId(spellId)
+	if not rankBySpellId then
+		rankBySpellId = {}
+		for ability, info in pairs(D.Abilities) do
+			for rank, rankInfo in pairs(info.ranks) do
+				if rankInfo.spellId then
+					rankBySpellId[rankInfo.spellId] = { ability = ability, rank = rank }
+				end
+			end
+		end
+	end
+	return rankBySpellId[spellId]
+end
+
+-- Pet spellbook access on both the classic globals and the newer C_SpellBook API.
+local function PetBookCount()
+	if HasPetSpells then
+		return HasPetSpells()
+	end
+	if C_SpellBook and C_SpellBook.HasPetSpells then
+		return C_SpellBook.HasPetSpells()
+	end
+end
+
+local function PetBookSlot(index)
+	if GetSpellBookItemName then
+		local book = BOOKTYPE_PET or "pet"
+		local name, sub = GetSpellBookItemName(index, book)
+		local spellId
+		if GetSpellBookItemInfo then
+			local _, id = GetSpellBookItemInfo(index, book)
+			spellId = id
+		end
+		return name, sub, spellId, book
+	end
+	if C_SpellBook and C_SpellBook.GetSpellBookItemInfo and Enum and Enum.SpellBookSpellBank then
+		local bank = Enum.SpellBookSpellBank.Pet
+		local item = C_SpellBook.GetSpellBookItemInfo(index, bank)
+		if item then
+			return item.name, item.subName, item.spellID or item.actionID, bank
+		end
+	end
+end
+
 function HPT:GetPetKnownRanks()
 	local known = {}
-	local num = HasPetSpells and HasPetSpells()
+	local num = PetBookCount()
 	if not num then
 		return known
 	end
-	local book = BOOKTYPE_PET or "pet"
 	for i = 1, num do
-		local name, sub = GetSpellBookItemName(i, book)
-		if name and D.Abilities[name] then
+		local name, sub, spellId, book = PetBookSlot(i)
+		local byId = type(spellId) == "number" and RankForSpellId(spellId)
+		if byId then
+			known[byId.ability] = math.max(known[byId.ability] or 0, byId.rank)
+		elseif name and D.Abilities[name] then
 			local rank = RankFromPetBookSlot(i, book, name, sub)
 			if rank and rank > 0 then
 				known[name] = math.max(known[name] or 0, rank)
@@ -840,6 +980,9 @@ for _, event in ipairs({
 	"CRAFT_UPDATE",
 	"PET_BAR_UPDATE",
 	"SPELLS_CHANGED",
+	"TRAINER_SHOW",
+	"TRAINER_UPDATE",
+	"TRAINER_CLOSED",
 }) do
 	HPT:RegisterEventIfValid(eventFrame, event)
 end
@@ -848,7 +991,10 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 	if event == "ADDON_LOADED" and arg1 == "Hunter_Pet_Trainer_Forever" then
 		HPT:GetDB()
 		HPT:Print("Loaded v%s. Open Beast Training to use the hybrid trainer UI.", HPT.VERSION)
+	elseif event == "ADDON_LOADED" then
+		HPT:EnsureBlizzardHooks()
 	elseif event == "PLAYER_LOGIN" then
+		HPT:EnsureBlizzardHooks()
 		if HPT.CreateUI then
 			HPT:CreateUI()
 		end
@@ -862,6 +1008,15 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 		if HPT.OnCraftEvent then HPT:OnCraftEvent(event) end
 		if HPT.OnApplyEvent then HPT:OnApplyEvent(event) end
 		if HPT.UpdateUI then HPT:UpdateUI() end
+	elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" or event == "TRAINER_CLOSED" then
+		HPT:EnsureBlizzardHooks()
+		-- The TP label is filled in after the event; read it on the next frame.
+		C_Timer.After(0.1, function()
+			HPT:RecordTrainerPoints()
+			if HPT.UpdateUI then
+				HPT:UpdateUI()
+			end
+		end)
 	elseif event == "CRAFT_SHOW" or event == "CRAFT_UPDATE" or event == "CRAFT_CLOSE"
 		or event == "UNIT_PET_TRAINING_POINTS" or event == "PET_BAR_UPDATE"
 		or event == "SPELLS_CHANGED" then
