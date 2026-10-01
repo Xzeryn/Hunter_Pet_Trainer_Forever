@@ -105,6 +105,10 @@ These don't block Tasks 1–3, but they decide how Tasks 4–6 are built. Each i
 
 ## Task 2 — Forever ability data
 
+**Status (October 1):** generator written and run: 31 abilities (8 trainer, 13 wild, 10 info-only), 19 families, all trainer checks pass. Petopia is a single page (`abilities.php`) with one `<h3 id=…>` section per ability, so no per-ability pages are needed. Icons fall back to Wowhead's embedded spell data (Mine!). Info-only abilities get their own "Learned with level (info only)" section with pet levels instead of costs, and are skipped by the apply plan.
+
+**Still to confirm in game:** the family name the client reports for owls (`UnitCreatureFamily("pet")`): Petopia says "Birds of Prey", TBC used "Owl". Same check for Core Hound and Fox.
+
 **Files**
 - Create: `tools/Build-ForeverData.ps1` — downloads Wowhead and Petopia, writes `Data.lua` and `SpellIds.lua`.
 - Replace: `Data.lua`, `SpellIds.lua`.

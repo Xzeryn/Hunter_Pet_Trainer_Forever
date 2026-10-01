@@ -328,7 +328,7 @@ function HPT:BuildApplyPlan(template)
 
 	for _, ability in ipairs(D.AbilityOrder) do
 		local desired = template.ranks[ability] or 0
-		if desired > 0 and self:AbilityAvailableForFamily(ability, template.family) then
+		if desired > 0 and not self:IsInfoOnlyAbility(ability) and self:AbilityAvailableForFamily(ability, template.family) then
 			local entry, reason = self:FindBestCraftForAbility(ability, desired, petRanks)
 			if entry and reason == "ok" then
 				table.insert(plan, {

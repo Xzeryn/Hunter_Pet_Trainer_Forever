@@ -578,6 +578,12 @@ function HPT:AbilityAvailableForFamily(abilityName, family)
 	return false
 end
 
+-- Family abilities with no trainer and 0 TP; pets appear to learn them with level.
+function HPT:IsInfoOnlyAbility(abilityName)
+	local info = D.Abilities[abilityName]
+	return info ~= nil and info.source == "innate"
+end
+
 -- Rank cost in Data.lua is the total TP invested to have that rank (not per-rank fee).
 -- Upgrade from have→desired costs cost(desired) - cost(have).
 function HPT:GetRankTotalCost(ability, rank)

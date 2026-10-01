@@ -458,7 +458,7 @@ function HPT:CreateUI()
 		b.rank = rank
 		b:SetScript("OnClick", function(self)
 			local t = HPT:GetActiveTemplate()
-			if not HPT:AbilityAvailableForFamily(ability, t.family) then
+			if HPT:IsInfoOnlyAbility(ability) or not HPT:AbilityAvailableForFamily(ability, t.family) then
 				return
 			end
 			if t.ranks[ability] == rank then
@@ -502,9 +502,10 @@ function HPT:CreateUI()
 	f.sectionHeaders = {
 		active = MakeSectionHeader("Active"),
 		passive = MakeSectionHeader("Passive"),
+		infoOnly = MakeSectionHeader("Unconfirmed: source unknown (info only)"),
 		unused = MakeSectionHeader("Not used by this pet family"),
 	}
-	-- Only show the TP costs hint on Active/Passive
+	f.sectionHeaders.infoOnly.costHint:SetText("PET LEVEL")
 	f.sectionHeaders.unused.costHint:SetText("")
 
 	f.rowByAbility = {}
@@ -557,9 +558,11 @@ function HPT:CreateUI()
 				if r > maxRank then maxRank = r end
 			end
 			local bx = BUTTONS_X
+			local infoOnly = HPT:IsInfoOnlyAbility(ability)
 			for rank = 1, maxRank do
 				if info.ranks[rank] then
-					local b = MakeRankButton(row, ability, rank, info.ranks[rank].cost)
+					local label = infoOnly and info.ranks[rank].level or info.ranks[rank].cost
+					local b = MakeRankButton(row, ability, rank, label)
 					b:SetPoint("LEFT", bx, 0)
 					row.buttons[rank] = b
 					bx = bx + BUTTON_STEP
@@ -588,6 +591,7 @@ function HPT:CreateUI()
 				GameTooltip:Show()
 			end)
 			clearBtn:SetScript("OnLeave", GameTooltip_Hide)
+			clearBtn:SetShown(not infoOnly)
 			row.clearBtn = clearBtn
 
 			f.rowByAbility[ability] = row
@@ -997,7 +1001,7 @@ function HPT:LayoutAbilityRows()
 	end
 	local t = self:GetActiveTemplate()
 	local family = t.family
-	local activeList, passiveList, unusedList = {}, {}, {}
+	local activeList, passiveList, infoOnlyList, unusedList = {}, {}, {}, {}
 
 	for _, ability in ipairs(D.AbilityOrder) do
 		local info = D.Abilities[ability]
@@ -1005,6 +1009,8 @@ function HPT:LayoutAbilityRows()
 			local avail = self:AbilityAvailableForFamily(ability, family)
 			if not avail then
 				table.insert(unusedList, ability)
+			elseif self:IsInfoOnlyAbility(ability) then
+				table.insert(infoOnlyList, ability)
 			elseif info.active then
 				table.insert(activeList, ability)
 			else
@@ -1042,6 +1048,8 @@ function HPT:LayoutAbilityRows()
 	placeRows(activeList)
 	placeHeader(f.sectionHeaders.passive, #passiveList > 0)
 	placeRows(passiveList)
+	placeHeader(f.sectionHeaders.infoOnly, #infoOnlyList > 0)
+	placeRows(infoOnlyList)
 	placeHeader(f.sectionHeaders.unused, #unusedList > 0)
 	placeRows(unusedList)
 
@@ -1386,6 +1394,7 @@ function HPT:UpdateUI()
 		local desired = t.ranks[ability] or 0
 		local petRank = displayPetRanks[ability] or 0
 		local info = D.Abilities[ability]
+		local infoOnly = self:IsInfoOnlyAbility(ability)
 		local hasPlannedGreen = desired > petRank
 		local knownSet = hunterCraftRankSet and hunterCraftRankSet[ability] or nil
 
@@ -1443,7 +1452,7 @@ function HPT:UpdateUI()
 				btn:EnableMouse(true)
 				if btn.Enable then btn:Enable() end
 				if rankInfo then
-					btn.fs:SetText(tostring(rankInfo.cost))
+					btn.fs:SetText(tostring(infoOnly and rankInfo.level or rankInfo.cost))
 					if not IsHunterKnownRank(rank) then
 						btn.fs:SetTextColor(1, 0.2, 0.2)
 					else
@@ -1486,7 +1495,7 @@ function HPT:UpdateUI()
 			end
 
 			-- Clear only when template has ranks beyond what is already trained (green cells)
-			if hasPlannedGreen then
+			if hasPlannedGreen and not infoOnly then
 				row.clearBtn:Show()
 			else
 				row.clearBtn:Hide()
@@ -1507,13 +1516,20 @@ function HPT:UpdateUI()
 					btn.bg:SetColorTexture(0.15, 0.15, 0.15, 0.9)
 				end
 				if rankInfo then
-					btn.fs:SetText(tostring(rankInfo.cost))
+					btn.fs:SetText(tostring(infoOnly and rankInfo.level or rankInfo.cost))
 					if not IsHunterKnownRank(rank) then
 						btn.fs:SetTextColor(1, 0.2, 0.2)
 					else
 						btn.fs:SetTextColor(1, 1, 1)
 					end
-					ApplyRankTooltip(btn, rank, rankInfo)
+					if infoOnly then
+						ApplyRankTooltip(btn, rank, rankInfo, {
+							{ "Unconfirmed: no trainer source or TP cost found yet", 1, 0.82, 0 },
+							{ "Shown for reference; can't be added to a plan", 0.8, 0.8, 0.8 },
+						})
+					else
+						ApplyRankTooltip(btn, rank, rankInfo)
+					end
 				end
 			end
 		end
