@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: Hunter Pet Trainer Forever
+## Notes: Plan pet training for WoW Forever and assist training at the pet trainer
+## Author: Xzeryn
+## Version: 0.1.0
+## SavedVariables: HunterPetTrainerForeverDB
+
+Data.lua
+SpellIds.lua
+Core.lua
+Craft.lua
+Apply.lua
+WowheadImport.lua
+UI.lua
+CraftOverlay.lua
