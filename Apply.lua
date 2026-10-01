@@ -123,8 +123,8 @@ function HPT:ApplyNext()
 	local left = #self.apply.queue - self.apply.step + 1
 	self:Print("Next: |cffffffff%s rank %d|r — select it in the trainer and click |cffffff00Train|r. (%d left)",
 		entry.ability, entry.rank, left)
-	if self.UpdateCraftNextLabel then
-		self:UpdateCraftNextLabel()
+	if self.UpdateNextLabel then
+		self:UpdateNextLabel()
 	end
 	if self.UpdateUI then
 		self:UpdateUI()
@@ -155,8 +155,8 @@ function HPT:OnApplyEvent(event)
 
 	self.apply.waiting = false
 	self:Print("Trained %s (rank now %d).", tostring(ability or "?"), petRankNow)
-	if self.UpdateCraftNextLabel then
-		self:UpdateCraftNextLabel()
+	if self.UpdateNextLabel then
+		self:UpdateNextLabel()
 	end
 
 	if C_Timer and C_Timer.After then
@@ -166,8 +166,8 @@ function HPT:OnApplyEvent(event)
 				local plan = select(1, self:BuildApplyPlan())
 				if not plan or #plan == 0 then
 					self:StopApply("Apply finished.")
-					if self.UpdateCraftNextLabel then
-						self:UpdateCraftNextLabel()
+					if self.UpdateNextLabel then
+						self:UpdateNextLabel()
 					end
 					return
 				end

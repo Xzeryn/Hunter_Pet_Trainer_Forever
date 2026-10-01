@@ -1014,6 +1014,9 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 		HPT:InvalidateTrainerCache()
 		if event == "TRAINER_CLOSED" then
 			HPT:RestoreTrainerFilters()
+			if HPT.HideTrainerOverlay then
+				HPT:HideTrainerOverlay()
+			end
 		end
 		-- The TP label is filled in after the event; read it on the next frame.
 		C_Timer.After(0.1, function()
@@ -1027,6 +1030,9 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 			end
 			if HPT.OnApplyEvent then
 				HPT:OnApplyEvent(event)
+			end
+			if HPT.OnTrainerOverlayEvent then
+				HPT:OnTrainerOverlayEvent(event)
 			end
 			if HPT.UpdateUI then
 				HPT:UpdateUI()

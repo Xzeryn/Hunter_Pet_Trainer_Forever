@@ -314,6 +314,8 @@ end
 
 ## Task 5 — Trainer overlay (replaces the craft-window parts of `CraftOverlay.lua`)
 
+**Status (October 1):** built, awaiting in-game test. `CraftOverlay.lua` is replaced by `TrainerOverlay.lua`: a separate dock frame anchored to the right of `ClassTrainerFrame` (anchor only; no Blizzard frame is moved, reparented, resized or re-scripted). It hosts the embedded planner and a footer with "Next: …" and a hint. It shows on Beast Training only, hides on close or at NPC trainers, and its close button, Escape or `/hpt` dismiss it until the next open. The Train proxy and every craft skinning helper are gone. First test: closing Beast Training left the dock up, so `TRAINER_CLOSED` apparently doesn't fire for the spell window. The dock is now a child of `ClassTrainerFrame` and cleans up in its own `OnHide` (stop apply, restore planner, restore filters).
+
 **Files**
 - Rename: `CraftOverlay.lua` → `TrainerOverlay.lua`.
 

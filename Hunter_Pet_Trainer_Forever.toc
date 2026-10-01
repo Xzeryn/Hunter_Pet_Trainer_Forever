@@ -13,4 +13,4 @@ Dev.lua
 Apply.lua
 WowheadImport.lua
 UI.lua
-CraftOverlay.lua
+TrainerOverlay.lua

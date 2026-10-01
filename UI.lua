@@ -214,6 +214,16 @@ function HPT:ToggleUI()
 	if not self.frame then
 		self:CreateUI()
 	end
+	if self:IsBeastTrainingOpen() and self.ShowTrainerOverlay then
+		if self:IsTrainerOverlayShown() then
+			self.dockDismissed = true
+			self:HideTrainerOverlay()
+		else
+			self.dockDismissed = false
+			self:ShowTrainerOverlay()
+		end
+		return
+	end
 	if self.frame:IsShown() then
 		self.frame:Hide()
 	else
@@ -1071,7 +1081,7 @@ function HPT:LayoutAbilityRows()
 	f.content:SetHeight(math.max(y, 1))
 end
 
--- When true, planner is drawn inside CraftFrame (no second dialog chrome).
+-- When true, planner is drawn inside the Beast Training dock (no second dialog chrome).
 function HPT:SetPlannerEmbedded(embedded)
 	local f = self.frame
 	if not f then
@@ -1594,7 +1604,7 @@ function HPT:UpdateUI()
 		end
 	end
 
-	if self.UpdateCraftNextLabel then
-		self:UpdateCraftNextLabel()
+	if self.UpdateNextLabel then
+		self:UpdateNextLabel()
 	end
 end
