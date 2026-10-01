@@ -356,6 +356,10 @@ The addon must **never** call `ClassTrainer_SetSelection`, `SelectTrainerService
 
 ## Task 7 — Docs, version and launch prep
 
+**Status (October 1):** README rewritten for Forever, version 0.2.0, `HPT_ClickTest` removed (the Train next button replaces it). The dev window gained a Tooltips report and icon IDs in the Trainer and Pet reports. Task 6 shipped as `a8eb2e6`; EllesmereUI theming (`Skin.lua`, third-party skinning API) as `435c520`. Still open: the launch-day steps below, and the in-game checks for owl / Core Hound / fox family names, the TP formula at other levels and loyalties, and Shadow Resistance 4's level (data 40, trainer NPC 50).
+
+Data reports: `Report.lua` records anything at Beast Training that differs from `Data.lua` and builds a prefilled GitHub issue (`.github/ISSUE_TEMPLATE/data-report.yml`, label `data-report`). Reports are readable; ones too long for one link are compressed (`HPTZ1:`). `tools\Read-Reports.ps1` reads and decodes them. Copy link marks entries as sent. The first test report ([#2](https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/issues/2), Cat L10) matched the data on every row and confirmed max TP = level × (loyalty − 1) at L10 loyalty 4 (16 remaining + 14 spent = 30).
+
 - [ ] Rewrite `README.md` for Forever: supported client, what's different from the TBC version, which abilities are info-only, and that TP shown away from the trainer is the last-seen value.
 - [ ] Bump to `0.2.0`, commit, push.
 - [ ] Before November 4: confirm the live client's folder name (likely not `_classic_beta_`) and copy `Hunter_Pet_Trainer_Forever` there. Re-run `Build-ForeverData.ps1` against launch data and re-check Interface number.

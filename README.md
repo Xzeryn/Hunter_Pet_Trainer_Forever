@@ -1,77 +1,121 @@
 # Hunter Pet Trainer Forever
 
-> **Work in progress.** Port of Hunter Pet Trainer v0.5.9 (TBC Anniversary) to **WoW Forever** (interface `16001`). The text below still describes the TBC addon until the port is finished; see [`docs/plans/2026-10-01-forever-port.md`](docs/plans/2026-10-01-forever-port.md).
+Plan hunter pet training and train it step by step in **World of Warcraft: Forever** (Classic Era based, level cap 60, interface `16001`).
 
-Plan pet ability training and assist Beast Training on **World of Warcraft TBC Anniversary** (interface `20506` / patch 2.5.6).
-
-Because `DoCraft()` is protected on this client (`ADDON_ACTION_FORBIDDEN`), the addon cannot auto-train. Instead it selects the next planned skill in the Blizzard Beast Training UI; you click **Train**.
+Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templates are the same; everything that talks to the game is new, because Forever moved Beast Training into the trainer window and removed the pet loyalty and training point functions.
 
 ## Features
 
-- **Current Pet** — live training plan tied to your summoned pet (only place Assist Train runs)
-- **Saved templates** — theory-craft builds per family (level / loyalty / TP budget)
-- **Ability grid** — Active / Passive / unused-for-family rows with TP costs, trained vs planned colors
-- **Beast Training overlay** — restyles CraftFrame for pet training; leaves Enchanting alone
-- **Wowhead import** — paste a [Hunter Pet Training](https://www.wowhead.com/tbc/hunter-pet-training) share link into a new template
-- Family-accurate ability lists (synced to Wowhead TBC data)
+- **Current Pet plan**: tied to your summoned pet. Known ranks come from the pet spellbook and the Beast Training list.
+- **Saved templates**: plan builds per family with level, loyalty and a TP budget.
+- **Ability grid**: Active, Passive, info-only and not-for-this-family rows with TP costs; trained and planned ranks are colored.
+- **Docked planner**: opens beside the Beast Training window and closes with it.
+- **Train next button**: two presses per rank. The first selects the planned row in Blizzard's list, the second clicks Train. The planned row is highlighted.
+- **Live training points and loyalty**, read from the Beast Training window and the Pet tab, remembered per pet.
+- **EllesmereUI theme** when EllesmereUI is installed (toggle under Blizz UI Enhanced > Blizzard Window Skins > Third-Party Addons).
 
 ## Install
 
-1. Copy this folder to:
-   `World of Warcraft\_anniversary_\Interface\AddOns\Hunter_Pet_Trainer`
-2. Restart the client or `/reload`
-3. Open **Beast Training** from your spellbook, or use `/hpt`
+1. Copy the `Hunter_Pet_Trainer_Forever` folder into your Forever client's `Interface\AddOns` folder.
+2. Restart the game.
+3. Open the Pet tab of the Character window once, so the addon can read your pet's loyalty.
+4. Cast **Beast Training**, or type `/hpt`.
 
 ## How to use
 
-### Current Pet (train)
+### Train your current pet
 
-1. Summon your pet and open Beast Training
-2. Select **Current Pet** in the template dropdown
-3. Click ranks to plan upgrades (green = planned, blue = already trained)
-4. Click Blizzard **Train** for each selected skill; HPT advances to the next
+1. Summon your pet and cast Beast Training. The planner docks on the right.
+2. Pick **Current Pet** in the Template dropdown.
+3. Click ranks to plan them (green = planned, blue = already trained).
+4. Press **Train next** twice per rank: once to select it, once to train it. The footer shows what's next.
 
-### Theory templates
+If the planned row is scrolled out of view, the button reads "Scroll to …"; scroll the Beast Training list to it. Every filter in Beast Training is ticked while it's open, so all ranks are listed, and your filter choices come back when it closes.
 
-1. **··· → New template…** → pick a family → name it  
-   or **Import Wowhead link…**
-2. Adjust level / loyalty steppers and ability ranks
-3. When ready: **Apply to Current Pet…**, then train from Current Pet
+### Plan with templates
 
-### Color legend
+1. **··· → New template…**, pick a family and name it.
+2. Set level, loyalty and ranks.
+3. **··· → Apply to Current Pet…**, then train from Current Pet.
+
+### Colors
 
 | Color | Meaning |
 |-------|---------|
 | Blue cell | Pet already has this rank |
-| Green cell | Planned on the template |
-| Red TP text | Hunter has not learned that craft rank yet (`*Ability not known`) |
+| Green cell | Planned |
+| Red TP text | The trainer doesn't list this rank (`*Ability not known`); checked only while Beast Training is open |
 | Grey row | Not used by this pet family |
+
+## Differences from the TBC version
+
+- **Training needs your clicks.** Forever blocks addons from choosing a trainer row or pressing Train. The Train next button works because it is a secure click of Blizzard's own row and Train button.
+- **Beast Training stays visible.** The planner docks beside it instead of replacing it, since the button has to click Blizzard's rows.
+- **Training points away from the trainer are the last value seen there.** The number turns grey; hover it for details. Max TP = pet level × (loyalty level − 1).
+- **Beast Training charges the upgrade cost.** With rank 1 known, rank 2 costs the difference (Great Stamina 2 = 10 − 5 = 5 TP).
+- **No Wowhead import yet.** Wowhead has no Forever pet calculator.
+
+## Info-only abilities
+
+These family abilities have no trainer and no TP cost on Petopia, and seem to be learned with pet level. They're listed under "Unconfirmed: source unknown (info only)" with the pet level for each rank and can't be planned until the game shows how they're learned:
+
+Dismember, Web, Pinch, Swipe, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Trickster's Dance.
+
+Faster Attack and Slower Attack are per-species traits, not trainable ranks, and aren't shown.
 
 ## Slash commands
 
 | Command | Action |
 |---------|--------|
-| `/hpt` | Toggle standalone planner |
-| `/hpt apply` | Start assisted train (Current Pet) |
-| `/hpt stop` | Cancel assist |
-| `/hpt new <name> [family]` | Blank theory template |
-| `/hpt save <name>` | Save As |
+| `/hpt` | Toggle the planner (or the dock while Beast Training is open) |
+| `/hpt apply` | Start the assist queue for Current Pet |
+| `/hpt stop` | Cancel it |
+| `/hpt new <name> [family]` | New blank template |
+| `/hpt save <name>` | Save the active plan as a template |
 | `/hpt load <name>` | Load Current Pet or a template |
-| `/hpt delete <name>` | Delete a saved template |
-| `/hpt apply <name>` | Copy a saved template onto Current Pet |
-| `/hpt wowhead <link>` | Import Wowhead share link |
-| `/hpt templates` | List saved templates |
+| `/hpt delete <name>` | Delete a template |
+| `/hpt apply <name>` | Copy a template onto Current Pet |
+| `/hpt templates` | List templates |
+| `/hpt report` | Build a GitHub issue link with new game data |
+| `/hpt report all` | Same, including entries already sent |
+| `/hpt report test` | Report every Beast Training row (for testing; nothing is saved) |
+| `/hpt dev` | Developer window with copyable reports |
 | `/hpt debug` | Toggle diagnostic chat messages |
 | `/hpt help` | Full command list |
 
-## Notes
+## Reporting game data
 
-- Assist Train **only** runs on **Current Pet** with a pet summoned and Beast Training open
-- Swapping pets (stable or abandon/tame) resets Current Pet to that animal’s trained ranks, even within the same family (tracked as `Name|Family`; dismiss / flying does not reset)
-- Cumulative TP costs use each rank’s listed total; upgrades cost the difference between ranks
-- ProfessionPlus / other craft UI addons: HPT hides conflicting enchant chrome while Beast Training is open
-- Optional: use [Tamed](https://www.curseforge.com/wow/addons/tamed) separately for tame sources — HPT does not modify or depend on it
+Whenever Beast Training is open with your pet out, the addon quietly saves anything that differs from its data:
+
+- trainer rows with a different level, cost or spell ID;
+- abilities, ranks or families the data doesn't have;
+- pet spells that aren't in the data;
+- training point totals that don't match the formula.
+
+Tooltip text and icon IDs are saved with each entry.
+
+To send it: type `/hpt report` (or **Report** in `/hpt dev`), click **Copy link**, paste it into your browser and submit the GitHub issue it opens. The text below the link is exactly what the issue will contain. Reports are sent as readable text; one too long for a single link is compressed instead (`tools\Read-Reports.ps1` decodes it), and only if it still doesn't fit is it split into parts (the **Part** button switches links).
+
+Copy link marks those entries as sent, so later reports leave them out unless the game shows different values. `/hpt report all` includes sent entries again. Once the addon's data is updated, entries that now match drop out on their own.
+
+`/hpt dev` also has manual reports you can select and copy (the log survives `/reload`):
+
+- **Trainer**: every Beast Training row with rank, status, cost, level, spell ID and icon, checked against the addon's data.
+- **Tooltips**: the full tooltip text of every Beast Training row.
+- **Pet**: family name, level, loyalty, training points and the pet spellbook with spell IDs and icons.
+
+With `/hpt debug` on, the window also shows **Taint**, **Filter test** and **Events** for diagnosing blocked actions. Blocked actions and "your pet has learned" messages are always logged.
+
+## Rebuilding ability data
+
+`tools\Build-ForeverData.ps1` downloads Wowhead and Petopia Forever data and writes `Data.lua` and `SpellIds.lua`:
+
+```
+powershell -ExecutionPolicy Bypass -File tools\Build-ForeverData.ps1
+```
+
+The trainer's live values always override this data in game.
 
 ## Version
 
-See `Hunter_Pet_Trainer.toc` (`## Version`).
+See `Hunter_Pet_Trainer_Forever.toc` (`## Version`).

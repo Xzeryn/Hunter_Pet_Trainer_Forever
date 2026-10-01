@@ -2,7 +2,7 @@
 ## Title: Hunter Pet Trainer Forever
 ## Notes: Plan pet training for WoW Forever and assist training at the pet trainer
 ## Author: Xzeryn
-## Version: 0.1.0
+## Version: 0.2.0
 ## SavedVariables: HunterPetTrainerForeverDB
 ## OptionalDeps: EllesmereUI
 
@@ -11,6 +11,7 @@ SpellIds.lua
 Core.lua
 Trainer.lua
 Dev.lua
+Report.lua
 Apply.lua
 WowheadImport.lua
 UI.lua

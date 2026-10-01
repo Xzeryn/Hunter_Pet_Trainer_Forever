@@ -44,9 +44,22 @@ function HPT:DevLog(msg, ...)
 	while #lines > MAX_LINES do
 		table.remove(lines, 1)
 	end
-	if self.devFrame and self.devFrame:IsShown() then
+	if self.devFrame and self.devFrame:IsShown() and not self.devFrame.reportText then
 		self:RefreshDevWindow()
 	end
+end
+
+-- Replaces the log view with fixed text (the data report) until another button is used.
+-- urls: optional list of links shown one at a time in a single-line copy box.
+-- onCopy(part): called when Copy link is clicked for that part.
+function HPT:ShowDevText(text, urls, onCopy)
+	local f = self:CreateDevWindow()
+	f.reportText = text
+	f.reportUrls = urls
+	f.reportOnCopy = onCopy
+	f.reportPart = 1
+	f:Show()
+	self:RefreshDevWindow()
 end
 
 local function Header(title)
@@ -75,10 +88,10 @@ function HPT:DevTrainerReport()
 	self:DevLog("Services: %s  |  selection: %s", Str(GetNumTrainerServices()), Str(GetTrainerSelectionIndex and GetTrainerSelectionIndex()))
 	local beast = self:IsBeastTrainingOpen()
 	local petRanks = beast and self:GetPetKnownRanks() or {}
-	self:DevLog("idx | name | rankText | status | cost (%s) | req | spellId | data (level/cost/spellId) | all cost returns",
+	self:DevLog("idx | name | rankText | status | cost (%s) | req | spellId | data (level/cost/spellId) | all cost returns | icon",
 		beast and "TP" or "copper")
 	for i = 1, GetNumTrainerServices() or 0 do
-		local name, status, _, reqLevel, rankText = GetTrainerServiceInfo(i)
+		local name, status, icon, reqLevel, rankText = GetTrainerServiceInfo(i)
 		local cost = GetTrainerServiceCost(i)
 		local costReturns = Join(GetTrainerServiceCost(i))
 		local req = GetTrainerServiceLevelReq and GetTrainerServiceLevelReq(i) or reqLevel
@@ -103,7 +116,7 @@ function HPT:DevTrainerReport()
 				check = check .. "  MISMATCH " .. table.concat(flags, ",")
 			end
 		end
-		self:DevLog("%d | %s | %s | %s | %s | %s | %s | %s | %s", i, Str(name), Str(rankText), Str(status), Str(cost), Str(req), Str(spellId), check, costReturns)
+		self:DevLog("%d | %s | %s | %s | %s | %s | %s | %s | %s | %s", i, Str(name), Str(rankText), Str(status), Str(cost), Str(req), Str(spellId), check, costReturns, Str(icon))
 	end
 	local known = {}
 	for ability, rank in pairs(self:GetKnownTrainerRanks()) do
@@ -134,23 +147,12 @@ function HPT:DevPetReport()
 	end
 	self:DevLog("GetPetPoints: remaining | total | spent | source = %s", Join(self:GetPetPoints()))
 
-	local num = HasPetSpells and HasPetSpells()
-		or (C_SpellBook and C_SpellBook.HasPetSpells and C_SpellBook.HasPetSpells())
-	self:DevLog("Pet spellbook slots: %s", Str(num))
-	for i = 1, num or 0 do
-		local name, sub, spellId
-		if GetSpellBookItemName then
-			name, sub = GetSpellBookItemName(i, BOOKTYPE_PET or "pet")
-			spellId = GetSpellBookItemInfo and select(2, GetSpellBookItemInfo(i, BOOKTYPE_PET or "pet"))
-		elseif C_SpellBook and C_SpellBook.GetSpellBookItemInfo then
-			local item = C_SpellBook.GetSpellBookItemInfo(i, Enum.SpellBookSpellBank.Pet)
-			if item then
-				name, sub, spellId = item.name, item.subName, item.spellID or item.actionID
-			end
-		end
-		local mapped = type(spellId) == "number" and self:RankForSpellId(spellId)
-		self:DevLog("  %d | %s | %s | %s | %s", i, Str(name), Str(sub), Str(spellId),
-			mapped and (mapped.ability .. " " .. mapped.rank) or "-")
+	local book = self:GetPetSpellbook()
+	self:DevLog("Pet spellbook slots: %d", #book)
+	for i, s in ipairs(book) do
+		local mapped = s.spellId and self:RankForSpellId(s.spellId)
+		self:DevLog("  %d | %s | %s | %s | %s | icon %s", i, Str(s.name), Str(s.sub), Str(s.spellId),
+			mapped and (mapped.ability .. " " .. mapped.rank) or "-", Str(s.icon))
 	end
 
 	local known = {}
@@ -162,6 +164,43 @@ function HPT:DevPetReport()
 	local plan = self:EnsureCurrentPetPlan()
 	if plan then
 		self:DevLog("Current Pet plan: family=%s identity=%s", Str(plan.family), Str(plan.petIdentity))
+	end
+end
+
+local function TooltipText(tip)
+	local lines = {}
+	local name = tip:GetName()
+	for n = 1, tip:NumLines() or 0 do
+		local left = _G[name .. "TextLeft" .. n]
+		local right = _G[name .. "TextRight" .. n]
+		local l = left and left:GetText()
+		local r = right and right:IsShown() and right:GetText()
+		if l and l ~= "" then
+			lines[#lines + 1] = (r and r ~= "") and (l .. "  [" .. r .. "]") or l
+		end
+	end
+	return lines
+end
+
+function HPT:DevTooltipReport()
+	Header("Tooltips")
+	if not _G.ClassTrainerFrame or not _G.ClassTrainerFrame:IsShown() then
+		self:DevLog("Open Beast Training first.")
+		return
+	end
+	local tip = self:EnsureScanTooltip()
+	for i = 1, GetNumTrainerServices() or 0 do
+		local name, status, _, _, rankText = GetTrainerServiceInfo(i)
+		if name and status ~= "header" then
+			tip:SetOwner(UIParent, "ANCHOR_NONE")
+			if pcall(tip.SetTrainerService, tip, i) then
+				self:DevLog("-- %d %s %s", i, name, Str(rankText))
+				for _, line in ipairs(TooltipText(tip)) do
+					self:DevLog("     %s", line)
+				end
+			end
+			tip:Hide()
+		end
 	end
 end
 
@@ -259,6 +298,34 @@ function HPT:RefreshDevWindow()
 	if not f then
 		return
 	end
+	local urls = f.reportText and f.reportUrls
+	f.scroll:SetPoint("TOPLEFT", 12, (urls and #urls > 0) and -86 or -58)
+	if urls and #urls > 0 then
+		f.urlBox:Show()
+		f.urlBox:SetText(urls[f.reportPart] or "")
+		f.urlBox:SetCursorPosition(0)
+		f.urlBox:SetFocus()
+		f.partBtn:SetShown(#urls > 1)
+		f.partBtn:SetText(("Part %d/%d"):format(f.reportPart, #urls))
+		f.copyBtn:Show()
+		f.copyBtn:ClearAllPoints()
+		if #urls > 1 then
+			f.copyBtn:SetPoint("RIGHT", f.partBtn, "LEFT", -4, 0)
+		else
+			f.copyBtn:SetPoint("TOPRIGHT", -12, -58)
+		end
+	else
+		f.urlBox:Hide()
+		f.partBtn:Hide()
+		f.copyBtn:Hide()
+	end
+	if f.reportText then
+		f.edit:SetText(f.reportText)
+		C_Timer.After(0, function()
+			f.scroll:SetVerticalScroll(0)
+		end)
+		return
+	end
 	f.edit:SetText(table.concat(LogLines(), "\n"))
 	C_Timer.After(0, function()
 		f.scroll:SetVerticalScroll(f.scroll:GetVerticalScrollRange())
@@ -269,8 +336,37 @@ local function MakeButton(parent, text, width, onClick)
 	local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
 	b:SetSize(width, 22)
 	b:SetText(text)
-	b:SetScript("OnClick", onClick)
+	b:SetScript("OnClick", function(self, ...)
+		if parent.reportText and not self.keepsReport then
+			parent.reportText = nil
+			HPT:RefreshDevWindow()
+		end
+		onClick(self, ...)
+	end)
 	return b
+end
+
+-- Taint / Filter test / Events are only shown with /hpt debug on.
+function HPT:LayoutDevButtons()
+	local f = self.devFrame
+	if not f then
+		return
+	end
+	local prev
+	for _, b in ipairs(f.buttons) do
+		b:ClearAllPoints()
+		if b.debugOnly and not self.DEBUG then
+			b:Hide()
+		else
+			b:Show()
+			if prev then
+				b:SetPoint("LEFT", prev, "RIGHT", 4, 0)
+			else
+				b:SetPoint("TOPLEFT", 12, -30)
+			end
+			prev = b
+		end
+	end
 end
 
 function HPT:CreateDevWindow()
@@ -278,7 +374,7 @@ function HPT:CreateDevWindow()
 		return self.devFrame
 	end
 	local f = CreateFrame("Frame", "HunterPetTrainerDevFrame", UIParent, "BasicFrameTemplateWithInset")
-	f:SetSize(720, 460)
+	f:SetSize(800, 460)
 	f:SetPoint("CENTER")
 	f:SetFrameStrata("DIALOG")
 	f:SetMovable(true)
@@ -293,32 +389,79 @@ function HPT:CreateDevWindow()
 	end
 
 	local buttons = {
+		{ "Report", 64, function() HPT:ShowDataReport() end },
 		{ "Trainer", 70, function() HPT:DevTrainerReport() end },
+		{ "Tooltips", 70, function() HPT:DevTooltipReport() end },
 		{ "Pet", 50, function() HPT:DevPetReport() end },
-		{ "Taint", 56, function() HPT:DevTaintReport() end },
-		{ "Filter test", 84, function() HPT:DevFilterTest() end },
-		{ "Events: off", 90, function() HPT:SetDevEventWatch(not HPT.devWatching) end },
-		{ "Select all", 80, function() f.edit:SetFocus() f.edit:HighlightText() end },
+		{ "Test report", 84, function() HPT:ShowDataReport("test") end, debugOnly = true },
+		{ "Taint", 56, function() HPT:DevTaintReport() end, debugOnly = true },
+		{ "Filter test", 84, function() HPT:DevFilterTest() end, debugOnly = true },
+		{ "Events: off", 90, function() HPT:SetDevEventWatch(not HPT.devWatching) end, debugOnly = true },
+		{ "Select all", 80, function() f.edit:SetFocus() f.edit:HighlightText() end, keepsReport = true },
 		{ "Clear", 56, function()
 			wipe(LogLines())
 			HPT:RefreshDevWindow()
 		end },
 	}
-	local prev
 	f.buttons = {}
 	for _, def in ipairs(buttons) do
 		local b = MakeButton(f, def[1], def[2], def[3])
+		b.debugOnly = def.debugOnly
+		b.keepsReport = def.keepsReport
 		table.insert(f.buttons, b)
-		if prev then
-			b:SetPoint("LEFT", prev, "RIGHT", 4, 0)
-		else
-			b:SetPoint("TOPLEFT", 12, -30)
-		end
 		if def[1] == "Events: off" then
 			f.eventsBtn = b
 		end
-		prev = b
 	end
+	self.devFrame = f
+	self:LayoutDevButtons()
+
+	local partBtn = MakeButton(f, "Part 1/1", 80, function()
+		f.reportPart = f.reportPart % #f.reportUrls + 1
+		HPT:RefreshDevWindow()
+	end)
+	partBtn.keepsReport = true
+	partBtn:SetPoint("TOPRIGHT", -12, -58)
+	partBtn:Hide()
+	f.partBtn = partBtn
+
+	local copyBtn = MakeButton(f, "Copy link", 80, function(btn)
+		local url = f.reportUrls and f.reportUrls[f.reportPart]
+		if url and f.reportOnCopy then
+			f.reportOnCopy(f.reportPart)
+		end
+		f.urlBox:SetFocus()
+		f.urlBox:HighlightText(0, #f.urlBox:GetText())
+		if url and _G.CopyToClipboard and pcall(_G.CopyToClipboard, url) then
+			btn:SetText("Copied!")
+		else
+			btn:SetText("Ctrl+C now")
+		end
+		C_Timer.After(2, function()
+			btn:SetText("Copy link")
+		end)
+	end)
+	copyBtn.keepsReport = true
+	copyBtn:Hide()
+	f.copyBtn = copyBtn
+
+	local urlBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+	urlBox:SetHeight(20)
+	urlBox:SetPoint("TOPLEFT", 18, -59)
+	urlBox:SetPoint("RIGHT", copyBtn, "LEFT", -8, 0)
+	urlBox:SetAutoFocus(false)
+	urlBox:SetMaxLetters(0)
+	urlBox:SetScript("OnEditFocusGained", function(self)
+		self:HighlightText(0, #(self:GetText() or ""))
+	end)
+	urlBox:SetScript("OnEscapePressed", urlBox.ClearFocus)
+	urlBox:SetScript("OnTextChanged", function(_, userInput)
+		if userInput then
+			HPT:RefreshDevWindow()
+		end
+	end)
+	urlBox:Hide()
+	f.urlBox = urlBox
 
 	local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
 	scroll:SetPoint("TOPLEFT", 12, -58)
@@ -330,9 +473,9 @@ function HPT:CreateDevWindow()
 	edit:SetMaxLetters(0)
 	edit:SetAutoFocus(false)
 	edit:SetFontObject(ChatFontNormal)
-	edit:SetWidth(660)
+	edit:SetWidth(740)
 	edit:SetScript("OnEscapePressed", edit.ClearFocus)
-	edit:SetScript("OnTextChanged", function(self, userInput)
+	edit:SetScript("OnTextChanged", function(_, userInput)
 		if userInput then
 			HPT:RefreshDevWindow()
 		end

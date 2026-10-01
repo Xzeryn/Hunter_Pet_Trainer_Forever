@@ -2,7 +2,7 @@ HunterPetTrainer = HunterPetTrainer or {}
 local HPT = HunterPetTrainer
 local D = HunterPetTrainerData
 
-HPT.VERSION = "0.1.0"
+HPT.VERSION = "0.2.0"
 HPT.ADDON_NAME = "Hunter Pet Trainer Forever"
 HPT.MAX_LEVEL = 60
 -- Wowhead has no Forever pet calculator yet; the TBC import code stays but is hidden.
@@ -1072,11 +1072,19 @@ SlashCmdList.HUNTERPETTRAINER = function(msg)
 		HPT:Echo("  /hpt apply <name> - copy a saved template onto Current Pet")
 		HPT:Echo("  /hpt debug - toggle diagnostic chat messages")
 		HPT:Echo("  /hpt dev - developer window with copyable reports")
+		HPT:Echo("  /hpt report - build a GitHub issue link with new trainer data")
 	elseif msg == "dev" then
 		HPT:ToggleDevWindow()
+	elseif msg == "report" then
+		HPT:ShowDataReport()
+	elseif msg == "report test" or msg == "report all" then
+		HPT:ShowDataReport(msg:match("^report (%a+)$"))
 	elseif msg == "debug" then
 		HPT.DEBUG = not HPT.DEBUG
 		HPT:Echo("Debug chat %s.", HPT.DEBUG and "ON" or "OFF")
+		if HPT.LayoutDevButtons then
+			HPT:LayoutDevButtons()
+		end
 	elseif msg == "apply" then
 		HPT:StartApply()
 	elseif msg:match("^apply%s+") then
