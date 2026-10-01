@@ -333,6 +333,8 @@ end
 
 The addon must **never** call `ClassTrainer_SetSelection`, `SelectTrainerService` or `BuyTrainerService`; any of them taints the trainer and blocks training.
 
+**Status (October 1):** built, awaiting in-game test. `TrainNext.lua` adds the two-press secure button to the dock footer and a pulsing gold box over the planned row. Every 0.25 s it takes the first `BuildApplyPlan` step and re-finds the row by name and rank text. If the row is off screen, the button reads "Scroll to …" and stays disabled; the addon doesn't scroll the list, since writing to Blizzard's ScrollBox could taint the selection. After a Select press it checks `GetTrainerSelectionIndex()` 0.3 s later before switching to Train. If Train is disabled the button shows "Train unavailable". A "learned" system message resets the queue to the next step. Dock show/hide is skipped in combat (protected child).
+
 **Files**
 - Modify: `Apply.lua` — `SelectTrainTarget`, `GetSpent`, `OnApplyEvent`.
 

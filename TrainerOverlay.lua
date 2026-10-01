@@ -49,15 +49,19 @@ function HPT:CreateTrainerDock()
 
 	local nextLabel = footer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	nextLabel:SetPoint("TOPLEFT", 10, -6)
-	nextLabel:SetPoint("RIGHT", footer, "RIGHT", -10, 0)
+	nextLabel:SetPoint("RIGHT", footer, "RIGHT", -200, 0)
 	nextLabel:SetJustifyH("LEFT")
 	dock.nextLabel = nextLabel
 
 	local hint = footer:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("TOPLEFT", nextLabel, "BOTTOMLEFT", 0, -4)
-	hint:SetPoint("RIGHT", footer, "RIGHT", -10, 0)
+	hint:SetPoint("RIGHT", footer, "RIGHT", -200, 0)
 	hint:SetJustifyH("LEFT")
 	dock.hint = hint
+
+	if HPT.CreateTrainNextButton then
+		HPT:CreateTrainNextButton(footer)
+	end
 
 	local host = CreateFrame("Frame", nil, dock)
 	host:SetPoint("TOPLEFT", 8, -34)
@@ -92,7 +96,12 @@ function HPT:UpdateNextLabel()
 	if plan and plan[1] then
 		dock.nextLabel:SetText(("Next: |cffffffff%s Rank %d|r  (|cffffff00%d left|r)"):format(
 			plan[1].ability, plan[1].trainRank, #plan))
-		dock.hint:SetText("Click that row in the Beast Training list, then click Train.")
+		local warning = self.GetTrainNextWarning and self:GetTrainNextWarning()
+		if warning then
+			dock.hint:SetText("|cffff4444" .. warning .. "|r")
+		else
+			dock.hint:SetText("Press the button twice: once to select the row, once to train it.")
+		end
 	else
 		dock.nextLabel:SetText("Next: |cff888888nothing to train for Current Pet|r")
 		dock.hint:SetText("Raise ranks in the planner to queue more training.")
@@ -137,7 +146,8 @@ end
 
 function HPT:ShowTrainerOverlay()
 	local trainer = _G.ClassTrainerFrame
-	if not trainer or not self:IsBeastTrainingOpen() then
+	-- The dock holds a secure button, so it can't be shown or moved in combat.
+	if not trainer or not self:IsBeastTrainingOpen() or InCombatLockdown() then
 		return
 	end
 	local dock = self:CreateTrainerDock()
@@ -178,7 +188,7 @@ function HPT:ShowTrainerOverlay()
 end
 
 function HPT:HideTrainerOverlay()
-	if self.dock then
+	if self.dock and not InCombatLockdown() then
 		self.dock:Hide()
 	end
 	self:OnDockHidden()
@@ -187,7 +197,7 @@ end
 -- Runs when the dock is hidden directly or because the trainer window closed.
 function HPT:OnDockHidden()
 	-- A parent hide leaves the dock flagged shown; clear it so the next open re-embeds the planner.
-	if self.dock and self.dock:IsShown() then
+	if self.dock and self.dock:IsShown() and not InCombatLockdown() then
 		self.dock:Hide()
 	end
 	if self.apply.active then
