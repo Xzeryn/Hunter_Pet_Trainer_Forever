@@ -1079,6 +1079,8 @@ SlashCmdList.HUNTERPETTRAINER = function(msg)
 		HPT:ShowDataReport()
 	elseif msg == "report test" or msg == "report all" then
 		HPT:ShowDataReport(msg:match("^report (%a+)$"))
+	elseif msg == "report clear" then
+		HPT:ClearObservations()
 	elseif msg == "debug" then
 		HPT.DEBUG = not HPT.DEBUG
 		HPT:Echo("Debug chat %s.", HPT.DEBUG and "ON" or "OFF")

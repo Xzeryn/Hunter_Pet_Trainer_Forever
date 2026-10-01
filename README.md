@@ -79,6 +79,7 @@ Faster Attack and Slower Attack are per-species traits, not trainable ranks, and
 | `/hpt report` | Build a GitHub issue link with new game data |
 | `/hpt report all` | Same, including entries already sent |
 | `/hpt report test` | Report every Beast Training row (for testing; nothing is saved) |
+| `/hpt report clear` | Forget all saved report data and sent marks |
 | `/hpt dev` | Developer window with copyable reports |
 | `/hpt debug` | Toggle diagnostic chat messages |
 | `/hpt help` | Full command list |

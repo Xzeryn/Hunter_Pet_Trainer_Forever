@@ -23,12 +23,18 @@ local function Observed()
 	o.rows = o.rows or {}
 	o.book = o.book or {}
 	o.tp = o.tp or {}
+	o.missing = o.missing or {}
 	return o
 end
 
 -- Test reports record everything into a throwaway table and never touch saved data.
 local function Scratch()
-	return { rows = {}, book = {}, tp = {}, test = true }
+	return { rows = {}, book = {}, tp = {}, missing = {}, test = true }
+end
+
+-- Faster / Slower Attack I-III are per-species traits, not trainable ranks.
+local function IsSpeciesTrait(name)
+	return name ~= nil and (name:find("^Faster Attack") or name:find("^Slower Attack")) ~= nil
 end
 
 local function SpellIcon(spellId)
@@ -140,10 +146,12 @@ function HPT:RecordObservations(o)
 	local petLevel = UnitLevel("pet")
 	o = o or Observed()
 	local petRanks = self:GetPetKnownRanks()
+	local listed = {}
 
 	for i = 1, GetNumTrainerServices() or 0 do
 		local name, status, icon, reqLevel, rankText = GetTrainerServiceInfo(i)
 		if name and status ~= "header" then
+			listed[name] = true
 			local rank = tonumber((rankText or ""):match("(%d+)"))
 			local r = {
 				family = family,
@@ -170,7 +178,7 @@ function HPT:RecordObservations(o)
 	end
 
 	for _, s in ipairs(self:GetPetSpellbook()) do
-		if s.spellId and (o.test or not self:RankForSpellId(s.spellId)) then
+		if s.spellId and not IsSpeciesTrait(s.name) and (o.test or not self:RankForSpellId(s.spellId)) then
 			local key = family .. "|" .. s.spellId
 			local seen = o.book[key]
 			if not seen or (petLevel and seen.petLevel and petLevel < seen.petLevel) then
@@ -184,6 +192,41 @@ function HPT:RecordObservations(o)
 	end
 
 	local loyalty = self:GetPetLoyaltyLevel()
+
+	-- Beast Training only lists what the hunter has learned, so remember everything it has
+	-- listed for this character, for any pet.
+	local db = self:GetDB()
+	db.hunterKnows = db.hunterKnows or {}
+	local charKey = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+	db.hunterKnows[charKey] = db.hunterKnows[charKey] or {}
+	local hunterKnows = db.hunterKnows[charKey]
+	for ability in pairs(listed) do
+		hunterKnows[ability] = true
+	end
+
+	-- Abilities the hunter knows and the data says this family can learn, but Beast
+	-- Training doesn't list for this pet (only meaningful with every filter ticked).
+	local _, allOn = self:GetTrainerFilterState()
+	if allOn and D.Families[family] then
+		local trainer, wild = {}, {}
+		for _, ability in ipairs(D.AbilityOrder) do
+			local info = D.Abilities[ability]
+			if info and hunterKnows[ability] and not listed[ability] and info.source ~= "innate"
+				and self:AbilityAvailableForFamily(ability, family) then
+				table.insert(info.source == "wild" and wild or trainer, ability)
+			end
+		end
+		local key = family .. "|" .. Str(loyalty)
+		if #trainer + #wild > 0 then
+			o.missing[key] = {
+				family = family, loyalty = loyalty, petLevel = petLevel,
+				trainer = table.concat(trainer, ", "), wild = table.concat(wild, ", "),
+			}
+		else
+			o.missing[key] = nil
+		end
+	end
+
 	local remaining = self:GetTrainerPointsRemaining()
 	if loyalty and remaining and petLevel then
 		local spent = 0
@@ -236,7 +279,7 @@ function HPT:BuildDataReportLines(o, includeSent)
 		return text
 	end
 	for key, s in pairs(o.book) do
-		if s.spellId >= 0x1000000 then
+		if s.spellId >= 0x1000000 or IsSpeciesTrait(s.name) then
 			o.book[key] = nil
 		end
 	end
@@ -284,11 +327,26 @@ function HPT:BuildDataReportLines(o, includeSent)
 	end
 
 	local tpLines = {}
-	for key, t in pairs(o.tp) do
-		local theory = self:GetTheoryMaxTP(t.level, t.loyalty)
-		if t.remaining + t.spent == theory and not o.test then
-			o.tp[key] = nil
-		else
+	local missing = SortedValues(o.missing or {}, function(a, b)
+		if a.family ~= b.family then return a.family < b.family end
+		return (a.loyalty or 0) < (b.loyalty or 0)
+	end)
+	for _, m in ipairs(missing) do
+		Add("## Known to the hunter but not listed for this pet (all filters on)",
+			("- %s pet L%s loyalty %s | trainer abilities: %s | wild abilities: %s"):format(
+				m.family, Str(m.petLevel), Str(m.loyalty),
+				m.trainer ~= "" and m.trainer or "none", m.wild ~= "" and m.wild or "none"),
+			table.concat({ "missing", m.family, Str(m.loyalty), m.trainer, m.wild }, "|"))
+	end
+
+	-- Readings that match the formula stay saved as evidence; "all" lists them.
+	-- The trainer label never goes below 0, so a pet tamed with more TP of abilities
+	-- than it has (loyalty 1 = 0 TP) shows 0, not a negative number.
+	local function ExpectedRemaining(t)
+		return math.max(0, self:GetTheoryMaxTP(t.level, t.loyalty) - t.spent)
+	end
+	for _, t in pairs(o.tp) do
+		if t.remaining ~= ExpectedRemaining(t) or o.test or includeSent then
 			tpLines[#tpLines + 1] = t
 		end
 	end
@@ -297,10 +355,18 @@ function HPT:BuildDataReportLines(o, includeSent)
 		return a.loyalty < b.loyalty
 	end)
 	for _, t in ipairs(tpLines) do
-		Add("## Training points vs formula", ("- pet L%d loyalty %d (%s): remaining %d + spent %d = %d, formula %d | ranks: %s"):format(
-			t.level, t.loyalty, Str(t.family), t.remaining, t.spent, t.remaining + t.spent,
-			self:GetTheoryMaxTP(t.level, t.loyalty), t.ranks ~= "" and t.ranks or "none"),
-			("tp|%d|%d|%d"):format(t.level, t.loyalty, t.remaining + t.spent))
+		local theory = self:GetTheoryMaxTP(t.level, t.loyalty)
+		local expected = ExpectedRemaining(t)
+		local verdict = " (matches)"
+		if t.remaining > expected then
+			verdict = " MISMATCH (loyalty may be out of date: open the Pet tab, then Beast Training)"
+		elseif t.remaining < expected then
+			verdict = " MISMATCH"
+		end
+		Add("## Training points vs formula", ("- pet L%d loyalty %d (%s): remaining %d, spent %d, formula total %d, expected remaining %d%s | ranks: %s"):format(
+			t.level, t.loyalty, Str(t.family), t.remaining, t.spent, theory, expected, verdict,
+			t.ranks ~= "" and t.ranks or "none"),
+			("tp|%d|%d|%d|%d"):format(t.level, t.loyalty, t.remaining, t.spent))
 	end
 
 	if not o.test then
@@ -311,6 +377,11 @@ function HPT:BuildDataReportLines(o, includeSent)
 		end
 	end
 	return lines, skipped
+end
+
+function HPT:ClearObservations()
+	self:GetDB().observed = nil
+	self:ShowDevText("Saved report data cleared. New data is recorded the next time Beast Training opens.")
 end
 
 function HPT:MarkReportSent(sigs)
@@ -422,6 +493,9 @@ function HPT:ShowDataReport(mode)
 	if test and not self:IsBeastTrainingOpen() then
 		self:ShowDevText("Test report: open Beast Training with your pet out first.")
 		return
+	end
+	if UnitExists("pet") and not self:GetPetLoyaltyLevel() then
+		header = header .. "\n(loyalty unknown: open the Pet tab of the Character window, then Beast Training, for training point readings)"
 	end
 	if #lines == 0 then
 		local text = header .. "\n\nNothing new to report. Everything seen at Beast Training matches the addon's data."
