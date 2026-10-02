@@ -7,12 +7,14 @@ param(
 Add-Type -AssemblyName System.Drawing
 $media = Join-Path $PSScriptRoot '..\media'
 
-function Resize([System.Drawing.Image]$img, [int]$size) {
+function Resize([System.Drawing.Image]$img, [int]$size, [double]$pad = 0) {
 	$bmp = New-Object System.Drawing.Bitmap($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 	$g = [System.Drawing.Graphics]::FromImage($bmp)
 	$g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
 	$g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-	$g.DrawImage($img, 0, 0, $size, $size)
+	$g.Clear([System.Drawing.Color]::FromArgb(255, 8, 18, 16))
+	$inset = [int]($size * $pad)
+	$g.DrawImage($img, $inset, $inset, $size - 2 * $inset, $size - 2 * $inset)
 	$g.Dispose()
 	return $bmp
 }
@@ -39,7 +41,8 @@ function Write-Tga([System.Drawing.Bitmap]$bmp, [string]$path) {
 
 $img = [System.Drawing.Image]::FromFile((Resolve-Path $Source))
 try {
-	$icon = Resize $img 64
+	# Pad the in-game texture so ears survive a circular minimap crop.
+	$icon = Resize $img 64 0.14
 	Write-Tga $icon (Join-Path $media 'icon.tga')
 	$icon.Dispose()
 	$logo = Resize $img 512
