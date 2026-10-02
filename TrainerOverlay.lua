@@ -27,8 +27,14 @@ function HPT:CreateTrainerDock()
 		HPT:OnDockHidden()
 	end)
 
+	local titleIcon = dock:CreateTexture(nil, "OVERLAY")
+	titleIcon:SetSize(22, 22)
+	titleIcon:SetPoint("TOPLEFT", 12, -7)
+	titleIcon:SetTexture(HPT.ICON)
+	dock.titleIcon = titleIcon
+
 	local title = dock:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", 14, -10)
+	title:SetPoint("LEFT", titleIcon, "RIGHT", 6, 0)
 	title:SetText("Hunter Pet Trainer")
 	dock.title = title
 

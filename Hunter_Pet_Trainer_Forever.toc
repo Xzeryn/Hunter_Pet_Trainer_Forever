@@ -3,8 +3,11 @@
 ## Notes: Plan pet training for WoW Forever and assist training at the pet trainer
 ## Author: Xzeryn
 ## Version: 0.2.0
+## X-License: MIT
+## X-Curse-Project-ID: 1721664
 ## SavedVariables: HunterPetTrainerForeverDB
 ## OptionalDeps: EllesmereUI
+## IconTexture: Interface\AddOns\Hunter_Pet_Trainer_Forever\media\icon
 
 Data.lua
 SpellIds.lua
@@ -18,3 +21,4 @@ UI.lua
 TrainerOverlay.lua
 TrainNext.lua
 Skin.lua
+Minimap.lua

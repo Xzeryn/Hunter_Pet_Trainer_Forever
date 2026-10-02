@@ -1,0 +1,11 @@
+package-as: Hunter_Pet_Trainer_Forever
+
+ignore:
+  - .github
+  - .gitignore
+  - .pkgmeta
+  - docs
+  - tools
+  - dist
+  - media/logo.png
+  - media/icon-source.jpg

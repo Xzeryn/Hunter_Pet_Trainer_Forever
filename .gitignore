@@ -5,6 +5,9 @@
 .DS_Store
 Thumbs.db
 
+# Release builds (tools/Build-Release.ps1)
+dist/
+
 # Editor
 .vscode/
 .idea/

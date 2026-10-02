@@ -267,6 +267,11 @@ function HPT:CreateUI()
 	title:SetPoint("TOP", 0, -16)
 	title:SetText("Hunter Pet Trainer")
 	f.title = title
+	local titleIcon = f:CreateTexture(nil, "OVERLAY")
+	titleIcon:SetSize(22, 22)
+	titleIcon:SetPoint("RIGHT", title, "LEFT", -6, 0)
+	titleIcon:SetTexture(HPT.ICON)
+	f.titleIcon = titleIcon
 
 	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 	close:SetPoint("TOPRIGHT", -4, -4)
@@ -1107,6 +1112,7 @@ function HPT:SetPlannerEmbedded(embedded)
 		f:RegisterForDrag()
 		if f.title then
 			f.title:Hide()
+			f.titleIcon:Hide()
 		end
 		if f.closeBtn then
 			f.closeBtn:Hide()
@@ -1184,6 +1190,7 @@ function HPT:SetPlannerEmbedded(embedded)
 		f:RegisterForDrag("LeftButton")
 		if f.title then
 			f.title:Show()
+			f.titleIcon:Show()
 		end
 		if f.closeBtn then
 			f.closeBtn:Show()

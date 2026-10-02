@@ -3,6 +3,7 @@ local HPT = HunterPetTrainer
 local D = HunterPetTrainerData
 
 HPT.VERSION = "0.2.0"
+HPT.ICON = "Interface\\AddOns\\Hunter_Pet_Trainer_Forever\\media\\icon"
 HPT.ADDON_NAME = "Hunter Pet Trainer Forever"
 HPT.MAX_LEVEL = 60
 -- Wowhead has no Forever pet calculator yet; the TBC import code stays but is hidden.
@@ -1073,6 +1074,7 @@ SlashCmdList.HUNTERPETTRAINER = function(msg)
 		HPT:Echo("  /hpt debug - toggle diagnostic chat messages")
 		HPT:Echo("  /hpt dev - developer window with copyable reports")
 		HPT:Echo("  /hpt report - build a GitHub issue link with new trainer data")
+		HPT:Echo("  /hpt minimap - hide or show the minimap button")
 	elseif msg == "dev" then
 		HPT:ToggleDevWindow()
 	elseif msg == "report" then
@@ -1081,6 +1083,8 @@ SlashCmdList.HUNTERPETTRAINER = function(msg)
 		HPT:ShowDataReport(msg:match("^report (%a+)$"))
 	elseif msg == "report clear" then
 		HPT:ClearObservations()
+	elseif msg == "minimap" then
+		HPT:ToggleMinimapButton()
 	elseif msg == "debug" then
 		HPT.DEBUG = not HPT.DEBUG
 		HPT:Echo("Debug chat %s.", HPT.DEBUG and "ON" or "OFF")

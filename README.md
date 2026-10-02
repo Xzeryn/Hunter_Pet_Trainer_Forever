@@ -1,3 +1,5 @@
+<img src="media/logo.png" alt="Hunter Pet Trainer Forever" width="128" align="right">
+
 # Hunter Pet Trainer Forever
 
 Plan hunter pet training and train it step by step in **World of Warcraft: Forever** (Classic Era based, level cap 60, interface `16001`).
@@ -12,6 +14,7 @@ Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templ
 - **Docked planner**: opens beside the Beast Training window and closes with it.
 - **Train next button**: two presses per rank. The first selects the planned row in Blizzard's list, the second clicks Train. The planned row is highlighted.
 - **Live training points and loyalty**, read from the Beast Training window and the Pet tab, remembered per pet.
+- **Minimap button**: left-click for the planner, right-click for data reports, drag to move.
 - **EllesmereUI theme** when EllesmereUI is installed (toggle under Blizz UI Enhanced > Blizzard Window Skins > Third-Party Addons).
 
 ## Install
@@ -80,6 +83,7 @@ Faster Attack and Slower Attack are per-species traits, not trainable ranks, and
 | `/hpt report all` | Same, including entries already sent |
 | `/hpt report test` | Report every Beast Training row (for testing; nothing is saved) |
 | `/hpt report clear` | Forget all saved report data and sent marks |
+| `/hpt minimap` | Hide or show the minimap button |
 | `/hpt dev` | Developer window with copyable reports |
 | `/hpt debug` | Toggle diagnostic chat messages |
 | `/hpt help` | Full command list |
@@ -120,3 +124,15 @@ The trainer's live values always override this data in game.
 ## Version
 
 See `Hunter_Pet_Trainer_Forever.toc` (`## Version`).
+
+## License
+
+MIT; see [LICENSE](LICENSE). Ability data is compiled from [Wowhead](https://www.wowhead.com/) and [Petopia](https://www.wow-petopia.com/), and corrected from in-game reports.
+
+## Releasing
+
+Two ways to ship a CurseForge zip that contains only the files the game needs (see `.pkgmeta`):
+
+**Manual.** `powershell -ExecutionPolicy Bypass -File tools\Build-Release.ps1` writes `dist\Hunter_Pet_Trainer_Forever-<version>.zip`. Upload that file on the CurseForge project.
+
+**From GitHub.** After the project exists and `## X-Curse-Project-ID` is in the `.toc`, a `v*` tag (for example `v0.2.0`) runs `.github/workflows/release.yml`. That uses [BigWigs packager](https://github.com/BigWigsMods/packager) to build from `.pkgmeta` and upload to CurseForge plus a GitHub release. The repository secret `CF_API_KEY` is a [CurseForge API token](https://wow.curseforge.com/account/api-tokens). Tags with `beta` or `alpha` in the name go to those CurseForge channels.

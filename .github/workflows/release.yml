@@ -1,0 +1,25 @@
+name: Release
+
+# Push a tag like v0.2.0 (or v0.2.1-beta) to build the zip from .pkgmeta and upload it
+# to CurseForge and the GitHub release. Needs the CF_API_KEY repository secret and
+# "## X-Curse-Project-ID" in the .toc.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
