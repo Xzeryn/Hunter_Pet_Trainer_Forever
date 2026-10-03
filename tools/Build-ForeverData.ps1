@@ -36,6 +36,7 @@ $PassiveAbilities = @(
 # Abilities Petopia doesn't list yet.
 $FamilyOverrides = @{
 	"Mine!" = @("Bird of Prey")
+	"Sonic Blast" = @("Bat")  # Wowhead-only; Forever notes and beastmaster.io say Bat
 }
 
 $FamilyNames = @{
@@ -66,7 +67,7 @@ $PreferredOrder = @(
 	"Furious Howl", "Demoralizing Screech", "Scorpid Poison", "Lightning Breath",
 	"Thunderstomp", "Shell Shield",
 	"Dismember", "Dust Cloud", "Lava Breath", "Mine!", "Pinch", "Savage Rend",
-	"Swipe", "Tendon Rip", "Trickster's Dance", "Web",
+	"Sonic Blast", "Swipe", "Tendon Rip", "Trickster's Dance", "Web",
 	"Great Stamina", "Natural Armor",
 	"Arcane Resistance", "Fire Resistance", "Frost Resistance", "Nature Resistance", "Shadow Resistance"
 )

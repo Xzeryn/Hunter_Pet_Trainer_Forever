@@ -62,7 +62,7 @@ If the planned row is scrolled out of view, the button reads "Scroll to …"; sc
 
 These family abilities have no trainer and no TP cost on Petopia, and seem to be learned with pet level. They're listed under "Unconfirmed: source unknown (info only)" with the pet level for each rank and can't be planned until the game shows how they're learned:
 
-Dismember, Web, Pinch, Swipe, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Trickster's Dance.
+Dismember, Web, Pinch, Swipe, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Sonic Blast, Trickster's Dance.
 
 Faster Attack and Slower Attack are per-species traits, not trainable ranks, and aren't shown.
 

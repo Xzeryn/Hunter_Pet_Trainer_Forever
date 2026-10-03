@@ -2,7 +2,7 @@ HunterPetTrainer = HunterPetTrainer or {}
 local HPT = HunterPetTrainer
 local D = HunterPetTrainerData
 
-HPT.VERSION = "0.2.0"
+HPT.VERSION = "0.2.1"
 HPT.ICON = "Interface\\AddOns\\Hunter_Pet_Trainer_Forever\\media\\icon"
 HPT.ADDON_NAME = "Hunter Pet Trainer Forever"
 HPT.MAX_LEVEL = 60
