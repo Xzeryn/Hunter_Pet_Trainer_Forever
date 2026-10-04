@@ -33,7 +33,7 @@ Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templ
 3. Click ranks to plan them (green = planned, blue = already trained).
 4. Press **Train next** twice per rank: once to select it, once to train it. The footer shows what's next.
 
-If the planned row is scrolled out of view, the button reads "Scroll to …"; scroll the Beast Training list to it. Every filter in Beast Training is ticked while it's open, so all ranks are listed, and your filter choices come back when it closes.
+If a planned rank is off screen, Train next hides used and unavailable rows so it can reach it. If the button still reads "Scroll to …", scroll the Beast Training list to that rank. Your filter choices come back when Beast Training closes.
 
 ### Plan with templates
 

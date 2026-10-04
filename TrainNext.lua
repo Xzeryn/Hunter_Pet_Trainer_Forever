@@ -15,6 +15,7 @@ local button, glow
 local mode = "select"
 local target -- { ability, rank, row }
 local warning
+local needsScroll
 
 local function RankNumber(text)
 	return tonumber((text or ""):match("(%d+)"))
@@ -38,7 +39,7 @@ local function CollectTexts(frame, out, depth)
 end
 
 -- Trainer rows are unnamed, recycled ScrollBox buttons: match by visible name and rank text.
-local function FindRowButton(name, rank)
+function HPT:FindTrainerRowButton(name, rank)
 	local trainer = _G.ClassTrainerFrame
 	if not trainer then
 		return nil
@@ -135,6 +136,7 @@ function HPT:RefreshTrainNext()
 	if not step then
 		target = nil
 		mode = "select"
+		needsScroll = nil
 		button:SetAttribute("clickbutton", nil)
 		SetLabel("Nothing to train", false)
 		ShowGlow(nil)
@@ -145,14 +147,31 @@ function HPT:RefreshTrainNext()
 		mode = "select"
 		warning = nil
 	end
-	target = { ability = step.ability, rank = step.trainRank, row = FindRowButton(step.ability, step.trainRank) }
+	target = { ability = step.ability, rank = step.trainRank, row = self:FindTrainerRowButton(step.ability, step.trainRank) }
 
 	if not target.row then
+		-- Available-only shrinks the list without tainting Train. ScrollBox
+		-- scroll APIs do taint selectedService — never call those here.
+		if self:ShowAvailableTrainerFilters() then
+			target.row = self:FindTrainerRowButton(target.ability, target.rank)
+		end
+	end
+	if not target.row then
 		mode = "select"
+		local notify = not needsScroll
+		needsScroll = true
 		button:SetAttribute("clickbutton", nil)
 		SetLabel(("Scroll to %s %d"):format(target.ability, target.rank), false)
 		ShowGlow(nil)
+		if notify and self.UpdateNextLabel then
+			self:UpdateNextLabel()
+		end
 		return
+	end
+	local wasScroll = needsScroll
+	needsScroll = nil
+	if wasScroll and self.UpdateNextLabel then
+		self:UpdateNextLabel()
 	end
 	if mode == "train" and not SelectionMatchesTarget() then
 		mode = "select"
@@ -188,6 +207,10 @@ function HPT:GetTrainNextWarning()
 	return warning
 end
 
+function HPT:GetTrainNextNeedsScroll()
+	return needsScroll
+end
+
 function HPT:CreateTrainNextButton(parent)
 	if button then
 		return button
@@ -203,7 +226,7 @@ function HPT:CreateTrainNextButton(parent)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("Train next planned rank")
 		GameTooltip:AddLine("Press once to select the highlighted row, then again to click Train.", 1, 1, 1, true)
-		GameTooltip:AddLine("If the row is off screen, scroll the Beast Training list to it.", 0.8, 0.8, 0.8, true)
+		GameTooltip:AddLine("If the row is still off screen, scroll the Beast Training list to it.", 0.8, 0.8, 0.8, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)
@@ -220,6 +243,7 @@ function HPT:CreateTrainNextButton(parent)
 		mode = "select"
 		target = nil
 		warning = nil
+		needsScroll = nil
 		HPT:RefreshTrainNext()
 	end)
 

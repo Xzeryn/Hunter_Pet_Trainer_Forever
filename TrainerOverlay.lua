@@ -111,6 +111,8 @@ function HPT:UpdateNextLabel()
 		local warning = self.GetTrainNextWarning and self:GetTrainNextWarning()
 		if warning then
 			dock.hint:SetText("|cffff4444" .. warning .. "|r")
+		elseif self.GetTrainNextNeedsScroll and self:GetTrainNextNeedsScroll() then
+			dock.hint:SetText("That rank is off screen. Scroll the Beast Training list until you can see it.")
 		else
 			dock.hint:SetText("Press the button twice: once to select the row, once to train it.")
 		end

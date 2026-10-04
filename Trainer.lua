@@ -6,6 +6,7 @@ local D = HunterPetTrainerData
 
 local FILTERS = { "used", "available", "unavailable" }
 local entryCache
+local hunterRankSet -- last full "hunter can teach this" snapshot; kept when filters hide rows
 
 local function RankNumber(text)
 	return tonumber((text or ""):match("(%d+)"))
@@ -36,22 +37,47 @@ function HPT:GetTrainerFilterState()
 	return state, allOn
 end
 
--- Calling SetTrainerServiceTypeFilter from addon code does not taint Train (tested October 1).
--- Filters are shared with NPC trainers, so the player's choice is restored on close.
+-- Calling SetTrainerServiceTypeFilter from addon code does not taint Train
+-- (all-on: October 1; available-only: October 4). Filters are shared with NPC
+-- trainers, so the player's choice is restored on close.
+function HPT:RememberTrainerFilters()
+	if not self.savedFilters and GetTrainerServiceTypeFilter then
+		self.savedFilters = self:GetTrainerFilterState()
+	end
+end
+
 function HPT:ShowAllTrainerFilters()
-	if self.savedFilters or not SetTrainerServiceTypeFilter or not self:IsBeastTrainingOpen() then
-		return
+	if not SetTrainerServiceTypeFilter or not self:IsBeastTrainingOpen() then
+		return false
 	end
-	local state, allOn = self:GetTrainerFilterState()
+	self:RememberTrainerFilters()
+	local _, allOn = self:GetTrainerFilterState()
 	if allOn then
-		return
+		return false
 	end
-	self.savedFilters = state
 	for _, key in ipairs(FILTERS) do
-		if not state[key] then
-			SetTrainerServiceTypeFilter(key, true)
-		end
+		SetTrainerServiceTypeFilter(key, true)
 	end
+	self:InvalidateTrainerCache()
+	return true
+end
+
+-- Hide used/unavailable so the planned available rank is on screen for Train next.
+-- Do not use ScrollBox APIs: those taint selectedService and block Train (October 4).
+function HPT:ShowAvailableTrainerFilters()
+	if not SetTrainerServiceTypeFilter or not self:IsBeastTrainingOpen() then
+		return false
+	end
+	self:RememberTrainerFilters()
+	local state = self:GetTrainerFilterState()
+	if state.available and not state.used and not state.unavailable then
+		return false
+	end
+	SetTrainerServiceTypeFilter("used", false)
+	SetTrainerServiceTypeFilter("unavailable", false)
+	SetTrainerServiceTypeFilter("available", true)
+	self:InvalidateTrainerCache()
+	return true
 end
 
 function HPT:RestoreTrainerFilters()
@@ -60,10 +86,11 @@ function HPT:RestoreTrainerFilters()
 		return
 	end
 	self.savedFilters = nil
+	if not SetTrainerServiceTypeFilter then
+		return
+	end
 	for _, key in ipairs(FILTERS) do
-		if not saved[key] then
-			pcall(SetTrainerServiceTypeFilter, key, false)
-		end
+		pcall(SetTrainerServiceTypeFilter, key, saved[key] and true or false)
 	end
 end
 
@@ -131,6 +158,35 @@ function HPT:GetTrainerRankSet()
 		end
 	end
 	return set
+end
+
+function HPT:ClearHunterKnownRankSet()
+	hunterRankSet = nil
+end
+
+-- White vs red rank numbers: white = the hunter can teach it. A filtered list
+-- hides rows, so we keep the last complete snapshot from this Beast Training
+-- session instead of treating missing rows as known.
+function HPT:GetHunterKnownRankSet()
+	if not self:IsBeastTrainingOpen() then
+		return nil
+	end
+	local live = self:GetTrainerRankSet()
+	local _, allOn = self:GetTrainerFilterState()
+	if allOn then
+		hunterRankSet = live
+		return hunterRankSet
+	end
+	if not hunterRankSet then
+		return nil
+	end
+	for ability, ranks in pairs(live) do
+		hunterRankSet[ability] = hunterRankSet[ability] or {}
+		for rank in pairs(ranks) do
+			hunterRankSet[ability][rank] = true
+		end
+	end
+	return hunterRankSet
 end
 
 -- exactOnly=true: never fall back to a different rank (used for tooltips).

@@ -223,6 +223,134 @@ function HPT:DevTaintReport()
 		Str(_G.ClassTrainerTrainButton and _G.ClassTrainerTrainButton:IsEnabled()))
 end
 
+local function Describe(v)
+	if v == nil then
+		return "nil"
+	end
+	local t = type(v)
+	if t ~= "table" then
+		return t .. " " .. tostring(v)
+	end
+	local keys = {}
+	for k in pairs(v) do
+		keys[#keys + 1] = tostring(k)
+	end
+	table.sort(keys)
+	return "table{" .. table.concat(keys, ",") .. "}"
+end
+
+-- Does scrolling ClassTrainerFrame.ScrollBox from addon code taint Train?
+-- Only scrolls; does not select a row or call BuyTrainerService.
+function HPT:DevScrollTest()
+	Header("Scroll test")
+	if not self:IsBeastTrainingOpen() then
+		self:DevLog("Open Beast Training first.")
+		return
+	end
+	local box = _G.ClassTrainerFrame and _G.ClassTrainerFrame.ScrollBox
+	if not box then
+		self:DevLog("ClassTrainerFrame.ScrollBox is missing.")
+		return
+	end
+	self:DevLog("ScrollBox APIs: ScrollToElementData=%s  ScrollToElementDataIndex=%s  SetScrollPercentage=%s  GetDataProvider=%s  EnumerateFrames=%s",
+		Str(box.ScrollToElementData ~= nil), Str(box.ScrollToElementDataIndex ~= nil),
+		Str(box.SetScrollPercentage ~= nil), Str(box.GetDataProvider ~= nil), Str(box.EnumerateFrames ~= nil))
+
+	local name, rank, index
+	local step = self:IsCurrentPetActive() and UnitExists("pet") and select(1, self:BuildApplyPlan())[1]
+	if step then
+		name, rank = step.ability, step.trainRank
+		for i = 1, GetNumTrainerServices() or 0 do
+			local n, status, _, _, rankText = GetTrainerServiceInfo(i)
+			if n == name and status ~= "header" and tonumber((rankText or ""):match("(%d+)")) == rank then
+				index = i
+				break
+			end
+		end
+		self:DevLog("Target from plan: %s %s (service %s)", name, Str(rank), Str(index))
+	else
+		for i = GetNumTrainerServices() or 0, 1, -1 do
+			local n, status, _, _, rankText = GetTrainerServiceInfo(i)
+			if n and status ~= "header" then
+				name, rank, index = n, tonumber((rankText or ""):match("(%d+)")), i
+				break
+			end
+		end
+		self:DevLog("No planned rank; using last list row: %s %s (service %s)", Str(name), Str(rank), Str(index))
+	end
+	if not index then
+		self:DevLog("No trainer row to scroll to.")
+		return
+	end
+
+	local visibleBefore = self:FindTrainerRowButton(name, rank)
+	self:DevLog("Row visible before scroll: %s", visibleBefore and "yes" or "no")
+
+	if box.EnumerateFrames then
+		local ok, frame = pcall(function()
+			for _, f in box:EnumerateFrames() do
+				return f
+			end
+		end)
+		local data = ok and frame and frame.GetElementData and frame:GetElementData()
+		self:DevLog("First visible element data: %s", Describe(data))
+	end
+
+	local function Try(label, fn)
+		local ok, err = pcall(fn)
+		self:DevLog("  %s: %s", label, ok and "ok" or tostring(err))
+		return ok
+	end
+
+	local provider = box.GetDataProvider and box:GetDataProvider()
+	local element
+	if provider then
+		self:DevLog("DataProvider: GetSize=%s FindElementDataByPredicate=%s",
+			Str(provider.GetSize ~= nil), Str(provider.FindElementDataByPredicate ~= nil))
+		if provider.FindElementDataByPredicate then
+			local ok, found = pcall(function()
+				return provider:FindElementDataByPredicate(function(el)
+					if type(el) == "number" then
+						return el == index
+					end
+					if type(el) ~= "table" then
+						return false
+					end
+					return el.skillIndex == index or el.index == index or el.serviceIndex == index
+				end)
+			end)
+			if ok then
+				element = found
+			end
+			self:DevLog("FindElementDataByPredicate: %s", Describe(element))
+		end
+	end
+
+	if box.ScrollToElementDataIndex then
+		Try("ScrollToElementDataIndex(" .. index .. ")", function()
+			box:ScrollToElementDataIndex(index)
+		end)
+	end
+	if element and box.ScrollToElementData then
+		Try("ScrollToElementData", function()
+			box:ScrollToElementData(element)
+		end)
+	end
+	if box.SetScrollPercentage then
+		local total = math.max(1, (GetNumTrainerServices() or 1) - 1)
+		Try(("SetScrollPercentage(%.2f)"):format((index - 1) / total), function()
+			box:SetScrollPercentage((index - 1) / total)
+		end)
+	end
+
+	C_Timer.After(0.3, function()
+		local visibleAfter = HPT:FindTrainerRowButton(name, rank)
+		HPT:DevLog("Row visible after scroll: %s", visibleAfter and "yes" or "no")
+		HPT:DevTaintReport()
+		HPT:DevLog("Now use Train next, or click the row and Train by hand. A TRAINED or BLOCKED line will appear here.")
+	end)
+end
+
 -- Phase 0.1c: does SetTrainerServiceTypeFilter from addon code taint the trainer?
 function HPT:DevFilterTest()
 	Header("Filter test")
@@ -249,6 +377,59 @@ function HPT:DevFilterTest()
 	C_Timer.After(0.3, function()
 		HPT:DevTaintReport()
 		HPT:DevLog("Now click a row and Train by hand. A TRAINED or BLOCKED line will appear here.")
+	end)
+end
+
+local function PlannedTrainerRow()
+	local step = HPT:IsCurrentPetActive() and UnitExists("pet") and select(1, HPT:BuildApplyPlan())[1]
+	if not step then
+		return nil
+	end
+	local name, rank = step.ability, step.trainRank
+	for i = 1, GetNumTrainerServices() or 0 do
+		local n, status, _, _, rankText = GetTrainerServiceInfo(i)
+		if n == name and status ~= "header" and tonumber((rankText or ""):match("(%d+)")) == rank then
+			return name, rank, i, status
+		end
+	end
+	return name, rank, nil, nil
+end
+
+-- Show only "available" rows so the planned rank may appear without scrolling.
+-- SetTrainerServiceTypeFilter did not taint Train on October 1; this checks whether
+-- narrowing the list is enough for Train next, without touching ScrollBox.
+function HPT:DevAvailableFilterTest()
+	Header("Available-only filter")
+	if not self:IsBeastTrainingOpen() or not SetTrainerServiceTypeFilter then
+		self:DevLog("Open Beast Training first.")
+		return
+	end
+	local before = self:GetTrainerFilterState()
+	local name, rank, index, status = PlannedTrainerRow()
+	self:DevLog("Before: used=%s available=%s unavailable=%s  |  services=%s",
+		Str(before.used), Str(before.available), Str(before.unavailable), Str(GetNumTrainerServices()))
+	if name then
+		self:DevLog("Plan: %s %s  service=%s  status=%s  visible=%s",
+			name, Str(rank), Str(index), Str(status),
+			self:FindTrainerRowButton(name, rank) and "yes" or "no")
+	else
+		self:DevLog("No planned rank. The list will still be narrowed so you can look.")
+	end
+	SetTrainerServiceTypeFilter("used", false)
+	SetTrainerServiceTypeFilter("unavailable", false)
+	SetTrainerServiceTypeFilter("available", true)
+	C_Timer.After(0.3, function()
+		local after = HPT:GetTrainerFilterState()
+		HPT:DevLog("After: used=%s available=%s unavailable=%s  |  services=%s",
+			Str(after.used), Str(after.available), Str(after.unavailable), Str(GetNumTrainerServices()))
+		local n2, r2, i2, s2 = PlannedTrainerRow()
+		if n2 then
+			HPT:DevLog("Plan after filter: %s %s  service=%s  status=%s  visible=%s",
+				n2, Str(r2), Str(i2), Str(s2),
+				HPT:FindTrainerRowButton(n2, r2) and "yes" or "no")
+		end
+		HPT:DevTaintReport()
+		HPT:DevLog("Filters stay like this until Beast Training closes (then they restore). Use Train next, or Train by hand.")
 	end)
 end
 
@@ -374,7 +555,7 @@ function HPT:CreateDevWindow()
 		return self.devFrame
 	end
 	local f = CreateFrame("Frame", "HunterPetTrainerDevFrame", UIParent, "BasicFrameTemplateWithInset")
-	f:SetSize(800, 460)
+	f:SetSize(1080, 460)
 	f:SetPoint("CENTER")
 	f:SetFrameStrata("DIALOG")
 	f:SetMovable(true)
@@ -396,6 +577,8 @@ function HPT:CreateDevWindow()
 		{ "Test report", 84, function() HPT:ShowDataReport("test") end, debugOnly = true },
 		{ "Taint", 56, function() HPT:DevTaintReport() end, debugOnly = true },
 		{ "Filter test", 84, function() HPT:DevFilterTest() end, debugOnly = true },
+		{ "Avail. only", 80, function() HPT:DevAvailableFilterTest() end, debugOnly = true },
+		{ "Scroll test", 84, function() HPT:DevScrollTest() end, debugOnly = true },
 		{ "Events: off", 90, function() HPT:SetDevEventWatch(not HPT.devWatching) end, debugOnly = true },
 		{ "Select all", 80, function() f.edit:SetFocus() f.edit:HighlightText() end, keepsReport = true },
 		{ "Clear", 56, function()
@@ -473,7 +656,7 @@ function HPT:CreateDevWindow()
 	edit:SetMaxLetters(0)
 	edit:SetAutoFocus(false)
 	edit:SetFontObject(ChatFontNormal)
-	edit:SetWidth(740)
+	edit:SetWidth(1020)
 	edit:SetScript("OnEscapePressed", edit.ClearFocus)
 	edit:SetScript("OnTextChanged", function(_, userInput)
 		if userInput then

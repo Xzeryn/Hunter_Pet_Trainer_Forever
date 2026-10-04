@@ -1015,6 +1015,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 		HPT:InvalidateTrainerCache()
 		if event == "TRAINER_CLOSED" then
 			HPT:RestoreTrainerFilters()
+			HPT:ClearHunterKnownRankSet()
 			if HPT.HideTrainerOverlay then
 				HPT:HideTrainerOverlay()
 			end
