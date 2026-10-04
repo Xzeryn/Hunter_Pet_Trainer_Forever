@@ -8,7 +8,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 $toc = Join-Path $root "$name.toc"
 
 $version = (Select-String -Path $toc -Pattern '^## Version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
-$files = @("$name.toc", 'media/icon.tga', 'LICENSE', 'README.md')
+$files = @("$name.toc", 'media/icon.tga', 'LICENSE', 'README.md', 'CHANGELOG.md')
 $files += Get-Content $toc | Where-Object { $_ -match '^\s*[^#\s].*\.(lua|xml)\s*$' } | ForEach-Object { $_.Trim() }
 
 $dist = Join-Path $root 'dist'

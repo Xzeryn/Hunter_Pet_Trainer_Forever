@@ -19,6 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # CurseForge and the GitHub release get only this tag's CHANGELOG.md section.
+      - name: Latest changelog section
+        run: python3 tools/Extract-RecentChangelog.py
+
       - uses: BigWigsMods/packager@v2
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}

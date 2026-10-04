@@ -1,9 +1,16 @@
 package-as: Hunter_Pet_Trainer_Forever
 
+# CurseForge / GitHub release notes: only the tagged ## [x.y.z] section.
+# tools/Extract-RecentChangelog.py writes this file in the Release workflow.
+manual-changelog:
+  filename: .RECENT_CHANGES.md
+  markup-type: markdown
+
 ignore:
   - .github
   - .gitignore
   - .pkgmeta
+  - .RECENT_CHANGES.md
   - docs
   - tools
   - dist

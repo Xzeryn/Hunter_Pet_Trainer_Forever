@@ -123,7 +123,7 @@ The trainer's live values always override this data in game.
 
 ## Version
 
-See `Hunter_Pet_Trainer_Forever.toc` (`## Version`).
+See `Hunter_Pet_Trainer_Forever.toc` (`## Version`) and [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
@@ -133,6 +133,8 @@ MIT; see [LICENSE](LICENSE). Ability data is compiled from [Wowhead](https://www
 
 Two ways to ship a CurseForge zip that contains only the files the game needs (see `.pkgmeta`):
 
-**Manual.** `powershell -ExecutionPolicy Bypass -File tools\Build-Release.ps1` writes `dist\Hunter_Pet_Trainer_Forever-<version>.zip`. Upload that file on the CurseForge project.
+**Changelog.** Put player-facing notes under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) in the same change as the code. Before tagging, move that section to `## [x.y.z] - date` and bump `## Version` in the `.toc` and `HPT.VERSION` in `Core.lua`. The tag workflow copies only that version's section to CurseForge and the GitHub release; a missing section fails the upload.
 
-**From GitHub.** After the project exists and `## X-Curse-Project-ID` is in the `.toc`, a `v*` tag (for example `v0.2.0`) runs `.github/workflows/release.yml`. That uses [BigWigs packager](https://github.com/BigWigsMods/packager) to build from `.pkgmeta` and upload to CurseForge plus a GitHub release. The repository secret `CF_API_KEY` is a [CurseForge API token](https://wow.curseforge.com/account/api-tokens). Tags with `beta` or `alpha` in the name go to those CurseForge channels.
+**Manual.** `powershell -ExecutionPolicy Bypass -File tools\Build-Release.ps1` writes `dist\Hunter_Pet_Trainer_Forever-<version>.zip`. Upload that file on the CurseForge project and paste the same changelog section.
+
+**From GitHub.** After the project exists and `## X-Curse-Project-ID` is in the `.toc`, a `v*` tag (for example `v0.2.2`) runs `.github/workflows/release.yml`. That uses [BigWigs packager](https://github.com/BigWigsMods/packager) to build from `.pkgmeta` and upload to CurseForge plus a GitHub release. The repository secret `CF_API_KEY` is a [CurseForge API token](https://wow.curseforge.com/account/api-tokens). Tags with `beta` or `alpha` in the name go to those CurseForge channels.
