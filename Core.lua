@@ -128,6 +128,15 @@ function HPT:CallPetInfo(method, ...)
 	return a, b, c
 end
 
+local function AsNumber(v)
+	if type(v) == "number" then
+		return v
+	end
+	if type(v) == "string" then
+		return tonumber(v)
+	end
+end
+
 function HPT:RecordLoyaltyLevel(level)
 	local stats = level and UnitExists("pet") and self:GetPetStats()
 	if stats and stats.loyalty ~= level then
@@ -224,8 +233,8 @@ function HPT:CollectCPetInfoLines()
 		table.sort(keys)
 		add("C_PetInfo keys: %s", #keys > 0 and table.concat(keys, ", ") or "(empty)")
 		add("  GetPetLoyalty: %s", call(C_PetInfo.GetPetLoyalty))
-		add("  GetPetHappiness: %s", call(C_PetInfo.GetPetHappiness))
-		add("  GetPetTrainingPoints: %s", call(C_PetInfo.GetPetTrainingPoints))
+		add("  GetPetHappiness (happiness, damage, rate): %s", call(C_PetInfo.GetPetHappiness))
+		add("  GetPetTrainingPoints (total, spent): %s", call(C_PetInfo.GetPetTrainingPoints))
 	end
 	add("GetPetLoyalty(): %s", call(GetPetLoyalty))
 	add("GetPetTrainingPoints(): %s", call(GetPetTrainingPoints))
@@ -806,19 +815,24 @@ function HPT:GetPetPoints()
 		return 0, 0, 0, "estimate"
 	end
 	local loyalty = self:GetPetLoyaltyLevel()
-	local total = loyalty and self:GetTheoryMaxTP(UnitLevel("pet"), loyalty) or 0
-	-- Forever C_PetInfo.GetPetTrainingPoints first return matches the Beast Training
-	-- remaining label. Second return is not spent (L17 Rebellious was 0, 10).
-	local remaining = tonumber(self:CallPetInfo("GetPetTrainingPoints"))
-	if remaining then
-		local spent = math.max(0, total - remaining)
+	local formulaTotal = loyalty and self:GetTheoryMaxTP(UnitLevel("pet"), loyalty) or 0
+	-- Forever C_PetInfo.GetPetTrainingPoints is (total, spent), same as classic.
+	-- Remaining is max(0, total - spent). Assign the two returns first: tonumber(total, spent)
+	-- treats spent as a numeric base (17, 17 became 24).
+	-- L17 Rebellious: (0, 10) remaining 0. L17 Unruly after Bite 3: (17, 17) remaining 0.
+	local totalPoints, spentPoints = self:CallPetInfo("GetPetTrainingPoints")
+	totalPoints = AsNumber(totalPoints)
+	spentPoints = AsNumber(spentPoints)
+	if totalPoints then
+		spentPoints = spentPoints or 0
+		local remaining = math.max(0, totalPoints - spentPoints)
 		local stats = self:GetPetStats()
 		if stats then
 			stats.remaining = remaining
 			stats.level = UnitLevel("pet")
-			stats.spent = spent
+			stats.spent = spentPoints
 		end
-		return remaining, total, spent, "api"
+		return remaining, totalPoints, spentPoints, "api"
 	end
 	if GetPetTrainingPoints then
 		local points, spent = GetPetTrainingPoints()
@@ -828,14 +842,14 @@ function HPT:GetPetPoints()
 	end
 	local live = self:GetTrainerPointsRemaining()
 	if live then
-		local liveTotal = loyalty and total or live
+		local liveTotal = loyalty and formulaTotal or live
 		return live, liveTotal, math.max(0, liveTotal - live), "trainer"
 	end
 	local stats = self:GetPetStats()
 	if stats and stats.spent then
-		return math.max(0, total - stats.spent), total, stats.spent, "cached"
+		return math.max(0, formulaTotal - stats.spent), formulaTotal, stats.spent, "cached"
 	end
-	return total, total, 0, "estimate"
+	return formulaTotal, formulaTotal, 0, "estimate"
 end
 
 -- Hook Blizzard text updates so values are captured the moment Blizzard sets them.

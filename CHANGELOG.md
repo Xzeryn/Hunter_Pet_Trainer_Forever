@@ -11,6 +11,14 @@ The CurseForge and GitHub release changelog is that section only.
 
 ## [Unreleased]
 
+### Changed
+
+- Train next always hides already known and unavailable Beast Training ranks before it looks for the planned row
+
+### Fixed
+
+- Remaining training points no longer jump above the pet's max after a loyalty gain
+
 ## [0.2.5] - 2026-10-05
 
 ### Changed

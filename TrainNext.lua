@@ -147,16 +147,12 @@ function HPT:RefreshTrainNext(allowFilterAssist)
 		mode = "select"
 		warning = nil
 	end
-	target = { ability = step.ability, rank = step.trainRank, row = self:FindTrainerRowButton(step.ability, step.trainRank) }
-
-	-- Only when the player presses Train next: available-only can put the
-	-- rank on screen. Do not do this on the refresh timer — that fights
-	-- anyone turning used/unavailable back on.
-	if not target.row and allowFilterAssist then
-		if self:ShowAvailableTrainerFilters() then
-			target.row = self:FindTrainerRowButton(target.ability, target.rank)
-		end
+	-- Only on Train next press: hide used/unavailable, then find the row.
+	-- The 0.25s timer must not do this — that fights anyone turning those filters back on.
+	if allowFilterAssist then
+		self:ShowAvailableTrainerFilters()
 	end
+	target = { ability = step.ability, rank = step.trainRank, row = self:FindTrainerRowButton(step.ability, step.trainRank) }
 	if not target.row then
 		mode = "select"
 		local notify = not needsScroll
@@ -231,8 +227,8 @@ function HPT:CreateTrainNextButton(parent)
 	button:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("Train next planned rank")
-		GameTooltip:AddLine("Press once to select the highlighted row, then again to click Train.", 1, 1, 1, true)
-		GameTooltip:AddLine("If the rank is off screen, that press shows only available rows so it can reach it. Scroll if it still is not visible.", 0.8, 0.8, 0.8, true)
+		GameTooltip:AddLine("This press hides already known and unavailable ranks, then selects the planned row. Press again to Train.", 1, 1, 1, true)
+		GameTooltip:AddLine("If the rank is still off screen, scroll the Beast Training list. Filters restore when Beast Training closes.", 0.8, 0.8, 0.8, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)
