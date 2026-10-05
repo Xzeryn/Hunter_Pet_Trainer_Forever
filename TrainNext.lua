@@ -158,7 +158,7 @@ function HPT:RefreshTrainNext(allowFilterAssist)
 		local notify = not needsScroll
 		needsScroll = true
 		button:SetAttribute("clickbutton", nil)
-		SetLabel(("Scroll to %s %d"):format(target.ability, target.rank), false)
+		SetLabel(("Scroll to %s %d"):format(target.ability, target.rank), true)
 		ShowGlow(nil)
 		if notify and self.UpdateNextLabel then
 			self:UpdateNextLabel()
@@ -179,6 +179,7 @@ end
 
 local function OnPostClick()
 	local pressedIn = mode
+	local clickedRow = target and target.row
 	C_Timer.After(VERIFY_DELAY, function()
 		if InCombatLockdown() or not target then
 			return
@@ -187,7 +188,7 @@ local function OnPostClick()
 			if SelectionMatchesTarget() then
 				mode = "train"
 				warning = nil
-			else
+			elseif clickedRow then
 				warning = ("Selection didn't match %s %d. Press Select again."):format(target.ability, target.rank)
 			end
 		else
@@ -228,7 +229,7 @@ function HPT:CreateTrainNextButton(parent)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("Train next planned rank")
 		GameTooltip:AddLine("This press hides already known and unavailable ranks, then selects the planned row. Press again to Train.", 1, 1, 1, true)
-		GameTooltip:AddLine("If the rank is still off screen, scroll the Beast Training list. Filters restore when Beast Training closes.", 0.8, 0.8, 0.8, true)
+		GameTooltip:AddLine("If it still says Scroll to, the rank is not in the shortened list; scroll until you can see it. Filters restore when Beast Training closes.", 0.8, 0.8, 0.8, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)
