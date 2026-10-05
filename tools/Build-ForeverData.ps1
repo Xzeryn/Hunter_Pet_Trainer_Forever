@@ -39,6 +39,11 @@ $FamilyOverrides = @{
 	"Sonic Blast" = @("Bat")  # Wowhead-only; Forever notes and beastmaster.io say Bat
 }
 
+# In-game Beast Training overrides Petopia's "no known training source" → innate.
+$SourceOverrides = @{
+	"Swipe" = "wild"  # 2026-10-05: hunter learned from a tamed Bear; Rank 1 listed at 0 TP
+}
+
 $FamilyNames = @{
 	"All Families"  = "ALL"
 	"Bats"          = "Bat"
@@ -82,7 +87,8 @@ $TrainerChecks = @(
 	@("Bite", 2, 8, 4, 0),
 	@("Claw", 2, 8, 4, 0),
 	@("Growl", 1, 1, 0, 0),
-	@("Growl", 2, 10, 0, 0)
+	@("Growl", 2, 10, 0, 0),
+	@("Swipe", 1, 12, 0, 1264494)
 )
 
 $Warnings = New-Object System.Collections.Generic.List[string]
@@ -202,6 +208,7 @@ foreach ($a in $abilities.Values) {
 	} else {
 		$a.source = "wild"
 	}
+	if ($SourceOverrides.ContainsKey($name)) { $a.source = $SourceOverrides[$name] }
 	$a.active = -not ($PassiveAbilities -contains $name)
 }
 

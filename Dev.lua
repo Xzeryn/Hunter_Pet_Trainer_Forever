@@ -527,7 +527,7 @@ local function MakeButton(parent, text, width, onClick)
 	return b
 end
 
--- Taint / Filter test / Events are only shown with /hpt debug on.
+-- Extra dump buttons and taint/filter/event tests are only shown with /hpt debug on.
 function HPT:LayoutDevButtons()
 	local f = self.devFrame
 	if not f then
@@ -571,9 +571,9 @@ function HPT:CreateDevWindow()
 
 	local buttons = {
 		{ "Report", 64, function() HPT:ShowDataReport() end },
-		{ "Trainer", 70, function() HPT:DevTrainerReport() end },
-		{ "Tooltips", 70, function() HPT:DevTooltipReport() end },
-		{ "Pet", 50, function() HPT:DevPetReport() end },
+		{ "Trainer", 70, function() HPT:DevTrainerReport() end, debugOnly = true },
+		{ "Tooltips", 70, function() HPT:DevTooltipReport() end, debugOnly = true },
+		{ "Pet", 50, function() HPT:DevPetReport() end, debugOnly = true },
 		{ "Test report", 84, function() HPT:ShowDataReport("test") end, debugOnly = true },
 		{ "Taint", 56, function() HPT:DevTaintReport() end, debugOnly = true },
 		{ "Filter test", 84, function() HPT:DevFilterTest() end, debugOnly = true },

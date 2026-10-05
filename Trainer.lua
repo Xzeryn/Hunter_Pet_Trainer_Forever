@@ -80,6 +80,32 @@ function HPT:ShowAvailableTrainerFilters()
 	return true
 end
 
+-- Run fn with used+available+unavailable on, then put the player's filters back.
+-- Does not touch savedFilters (Train next and trainer-close own that).
+function HPT:WithAllTrainerFilters(fn)
+	if not self:IsBeastTrainingOpen() or not SetTrainerServiceTypeFilter then
+		return fn(false, nil)
+	end
+	local previous, allOn = self:GetTrainerFilterState()
+	if not allOn then
+		for _, key in ipairs(FILTERS) do
+			SetTrainerServiceTypeFilter(key, true)
+		end
+		self:InvalidateTrainerCache()
+	end
+	local ok, a, b, c = pcall(fn, true, previous)
+	if not allOn then
+		for _, key in ipairs(FILTERS) do
+			SetTrainerServiceTypeFilter(key, previous[key] and true or false)
+		end
+		self:InvalidateTrainerCache()
+	end
+	if not ok then
+		error(a)
+	end
+	return a, b, c
+end
+
 function HPT:RestoreTrainerFilters()
 	local saved = self.savedFilters
 	if not saved then

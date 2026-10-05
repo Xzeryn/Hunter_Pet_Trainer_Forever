@@ -333,7 +333,7 @@ D.Abilities = {
   },
   ["Swipe"] = {
     active = true,
-    source = "innate",
+    source = "wild",
     families = { "Bear" },
     ranks = {
       [1] = { level = 12, cost = 0, spellId = 1264494 },

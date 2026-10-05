@@ -2,7 +2,7 @@
 ## Title: Hunter Pet Trainer Forever
 ## Notes: Plan pet training for WoW Forever and assist training at the pet trainer
 ## Author: Xzeryn
-## Version: 0.2.2
+## Version: 0.2.3
 ## X-License: MIT
 ## X-Curse-Project-ID: 1721664
 ## SavedVariables: HunterPetTrainerForeverDB

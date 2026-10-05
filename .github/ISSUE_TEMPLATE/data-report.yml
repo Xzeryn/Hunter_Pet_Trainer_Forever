@@ -6,8 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        This form is filled in by the addon's **Report** button (`/hpt dev` → Report, or `/hpt report`).
-        Each line is something seen in game that differs from the addon's data. Very long reports are compressed (`HPTZ1:`) to fit in one link; the addon shows the readable text before you open it. Please don't edit the report.
+        This form is filled in by **Report** (`/hpt report`, or `/hpt dev` → Report).
+        It is a snapshot of the current pet and Beast Training list, plus anything that differs from the addon's data.
+        Very long reports are compressed (`HPTZ1:`); the addon shows the readable text before you open it. Please don't edit the report.
   - type: textarea
     id: report
     attributes:

@@ -2,8 +2,9 @@ local HPT = HunterPetTrainer
 local D = HunterPetTrainerData
 
 -- Data collection: whenever Beast Training is open, rows (and pet spellbook entries)
--- that disagree with Data.lua are saved. The Report builds a prefilled GitHub issue
--- from whatever still disagrees, so entries drop out once Data.lua is updated.
+-- that disagree with Data.lua are saved. /hpt report (and Report in /hpt dev) takes
+-- one snapshot of the pet and Beast Training list, plus a GitHub issue for anything
+-- that still disagrees. Matching snapshots can still be submitted as confirmation.
 
 HPT.ISSUE_URL = "https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/issues/new"
 -- GitHub rejects issue links much past 8 KB.
@@ -479,74 +480,226 @@ local function SplitParts(entries, title, header, compress)
 	return parts
 end
 
--- mode: nil = new entries, "all" = include entries already sent,
--- "test" = every Beast Training row and pet spell, without reading or changing saved data.
+function HPT:CollectPetSnapshotLines()
+	local lines = {}
+	local function add(fmt, ...)
+		lines[#lines + 1] = fmt:format(...)
+	end
+	if not UnitExists("pet") then
+		add("No pet summoned.")
+		return lines
+	end
+	local xp, xpMax = GetPetExperience()
+	add("Name: %s | family: %s | level: %s | xp: %s/%s",
+		Str(UnitName("pet")), Str(UnitCreatureFamily("pet")), Str(UnitLevel("pet")), Str(xp), Str(xpMax))
+	add("Loyalty: %s | Pet tab: %s | stable text: %s | stable badge: %s",
+		Str(self:GetPetLoyaltyLevel()),
+		Str(_G.PetLoyaltyText and _G.PetLoyaltyText:GetText()),
+		Str(_G.PetStableLoyaltyText and _G.PetStableLoyaltyText:GetText()),
+		Str(PetStableFrame and PetStableFrame.loyaltyLevel and PetStableFrame.loyaltyLevel.levelText
+			and PetStableFrame.loyaltyLevel.levelText:GetText()))
+	local stats = self:GetPetStats()
+	if stats then
+		add("Saved stats: loyalty=%s remaining=%s level=%s spent=%s",
+			Str(stats.loyalty), Str(stats.remaining), Str(stats.level), Str(stats.spent))
+	end
+	local remaining, total, spent, source = self:GetPetPoints()
+	add("TP: remaining %s | total %s | spent %s | source %s",
+		Str(remaining), Str(total), Str(spent), Str(source))
+	local book = self:GetPetSpellbook()
+	local spells = {}
+	for _, s in ipairs(book) do
+		if s.spellId then
+			local mapped = self:RankForSpellId(s.spellId)
+			spells[#spells + 1] = ("%s | %s | %s | %s"):format(
+				Str(s.name), Str(s.sub), Str(s.spellId),
+				mapped and (mapped.ability .. " " .. mapped.rank) or "-")
+		end
+	end
+	if #spells == 0 then
+		add("Spellbook: (no ability ranks)")
+	else
+		add("Spellbook:")
+		for _, line in ipairs(spells) do
+			add("  %s", line)
+		end
+	end
+	local known = {}
+	for ability, rank in pairs(self:GetPetKnownRanks()) do
+		known[#known + 1] = ability .. " " .. rank
+	end
+	table.sort(known)
+	add("Known ranks: %s", #known > 0 and table.concat(known, ", ") or "none")
+	return lines
+end
+
+function HPT:CollectTrainerSnapshotLines()
+	local lines = {}
+	local function add(fmt, ...)
+		lines[#lines + 1] = fmt:format(...)
+	end
+	if not self:IsBeastTrainingOpen() then
+		local f = _G.ClassTrainerFrame
+		if f and f:IsShown() then
+			add("This trainer window is not Beast Training (TP label not visible). Cast Beast Training with the pet out.")
+		else
+			add("Beast Training is not open. Cast it with the pet out, then Report again.")
+		end
+		return lines
+	end
+	local filters, allOn = self:GetTrainerFilterState()
+	add("Filters: used=%s available=%s unavailable=%s (all on: %s) | services=%s | TP remaining=%s",
+		Str(filters.used), Str(filters.available), Str(filters.unavailable), Str(allOn),
+		Str(GetNumTrainerServices()), Str(self:GetTrainerPointsRemaining()))
+	add("idx | name | rank | status | cost TP | req | spellId | vs data")
+	local petRanks = self:GetPetKnownRanks()
+	for i = 1, GetNumTrainerServices() or 0 do
+		local name, status, _, reqLevel, rankText = GetTrainerServiceInfo(i)
+		if name and status ~= "header" then
+			local cost = GetTrainerServiceCost(i)
+			local req = GetTrainerServiceLevelReq and GetTrainerServiceLevelReq(i) or reqLevel
+			local spellId = self:GetTrainerServiceSpellId(i)
+			local rank = tonumber((rankText or ""):match("(%d+)"))
+			local r = {
+				family = UnitCreatureFamily("pet") or "?",
+				ability = name,
+				rank = rank,
+				rankText = rankText,
+				status = status,
+				cost = cost,
+				level = req,
+				spellId = spellId,
+				icon = nil,
+				known = petRanks[name] or 0,
+			}
+			local issues = self:CheckObservedRow(r)
+			local vs
+			if not D.Abilities[name] then
+				vs = "not in data"
+			elseif rank and not D.Abilities[name].ranks[rank] then
+				vs = "rank not in data"
+			else
+				local data = rank and D.Abilities[name].ranks[rank]
+				vs = data and ("%s/%s/%s"):format(Str(data.level), Str(data.cost), Str(data.spellId)) or "-"
+			end
+			if #issues > 0 then
+				vs = vs .. "  MISMATCH " .. table.concat(issues, ", ")
+			end
+			add("%d | %s | %s | %s | %s | %s | %s | %s",
+				i, Str(name), Str(rankText), Str(status), Str(cost), Str(req), Str(spellId), vs)
+		end
+	end
+	return lines
+end
+
+local function SnapshotText(petLines, trainerLines, filterNote)
+	local chunks = { "## Pet" }
+	for _, line in ipairs(petLines) do
+		chunks[#chunks + 1] = line
+	end
+	chunks[#chunks + 1] = ""
+	chunks[#chunks + 1] = "## Beast Training"
+	if filterNote then
+		chunks[#chunks + 1] = filterNote
+	end
+	for _, line in ipairs(trainerLines) do
+		chunks[#chunks + 1] = line
+	end
+	return table.concat(chunks, "\n")
+end
+
+-- mode: nil = new mismatches + current snapshot, "all" = include mismatches already sent,
+-- "test" = every Beast Training row as a mismatch, without reading or changing saved data.
 function HPT:ShowDataReport(mode)
 	local test = mode == "test"
-	local o = test and Scratch() or nil
-	self:RecordObservations(o)
-	local lines, skipped = self:BuildDataReportLines(o, mode == "all")
-	local _, build, _, toc = GetBuildInfo()
-	local header = ("HPT %s | build %s | interface %s | %s%s"):format(
-		self.VERSION, Str(build), Str(toc), date("%Y-%m-%d"), test and " | TEST" or "")
-
 	if test and not self:IsBeastTrainingOpen() then
 		self:ShowDevText("Test report: open Beast Training with your pet out first.")
 		return
 	end
+
+	local o = test and Scratch() or nil
+	local filterNote, petLines, trainerLines
+	self:WithAllTrainerFilters(function(_, previous)
+		if previous and not (previous.used and previous.available and previous.unavailable) then
+			filterNote = ("Filters were used=%s available=%s unavailable=%s; snapshot used all on, then restored."):format(
+				Str(previous.used), Str(previous.available), Str(previous.unavailable))
+		end
+		self:RecordObservations(o)
+		petLines = self:CollectPetSnapshotLines()
+		trainerLines = self:CollectTrainerSnapshotLines()
+	end)
+
+	local diffEntries, skipped = self:BuildDataReportLines(o, mode == "all")
+	local _, build, _, toc = GetBuildInfo()
+	local header = ("HPT %s | build %s | interface %s | %s%s"):format(
+		self.VERSION, Str(build), Str(toc), date("%Y-%m-%d"), test and " | TEST" or "")
 	if UnitExists("pet") and not self:GetPetLoyaltyLevel() then
-		header = header .. "\n(loyalty unknown: open the Pet tab of the Character window, then Beast Training, for training point readings)"
-	end
-	if #lines == 0 then
-		local text = header .. "\n\nNothing new to report. Everything seen at Beast Training matches the addon's data."
-		if skipped > 0 then
-			text = text .. ("\n\n%d already-sent entries are hidden; /hpt report all shows them again."):format(skipped)
-		end
-		self:ShowDevText(text .. "\n\nNew data is recorded whenever Beast Training is open with your pet out.")
-		return
+		header = header .. "\n(loyalty unknown: open the Pet tab of the Character window, then Beast Training)"
 	end
 
-	local families = {}
-	for _, e in ipairs(lines) do
-		local fam = e.text:match("^## Beast Training: (.+)$")
-		if fam then
-			families[#families + 1] = fam
-		end
+	local snapshot = SnapshotText(petLines, trainerLines, filterNote)
+	local diffText = {}
+	for _, e in ipairs(diffEntries) do
+		diffText[#diffText + 1] = e.text
 	end
+	local differences = #diffText > 0 and table.concat(diffText, "\n")
+		or "None. This snapshot matches the addon's data."
+	local body = snapshot .. "\n\n## Differences\n" .. differences
+
+	local fam = UnitExists("pet") and UnitCreatureFamily("pet")
 	local title = (test and "TEST " or "") .. "Data report: "
-		.. (#families > 0 and table.concat(families, ", ") or "pet data") .. " (HPT " .. self.VERSION .. ")"
+		.. (fam and (fam .. " L" .. tostring(UnitLevel("pet"))) or "pet data")
+		.. " (HPT " .. self.VERSION .. ")"
 
-	-- Readable unless that needs more than one link; then compressed.
 	local compress = false
-	local parts = SplitParts(lines, title, header, false)
-	if #parts > 1 then
+	local urls, parts, linkSize = {}, nil, 0
+	local fullUrl = IssueUrl(title, header, body, false)
+	if #fullUrl <= MAX_URL then
+		urls[1] = fullUrl
+		linkSize = #fullUrl
+	else
 		compress = true
-		parts = SplitParts(lines, title, header, true)
+		fullUrl = IssueUrl(title, header, body, true)
+		if #fullUrl <= MAX_URL then
+			urls[1] = fullUrl
+			linkSize = #fullUrl
+		else
+			parts = SplitParts(diffEntries, title, header, true)
+			for n, part in ipairs(parts) do
+				local partTitle = #parts > 1 and ("%s part %d/%d"):format(title, n, #parts) or title
+				urls[n] = IssueUrl(partTitle, header, part.body, true)
+				linkSize = linkSize + #urls[n]
+			end
+		end
 	end
 
-	local urls, bodies, linkSize = {}, {}, 0
-	for n, part in ipairs(parts) do
-		local partTitle = #parts > 1 and ("%s part %d/%d"):format(title, n, #parts) or title
-		urls[n] = IssueUrl(partTitle, header, part.body, compress)
-		linkSize = linkSize + #urls[n]
-		bodies[n] = (#parts > 1 and ("-- Part %d/%d --\n"):format(n, #parts) or "") .. header .. "\n" .. part.body
-	end
-
-	local intro = "Click Copy link, paste it into your browser and submit the issue."
+	local intro = "One click: pet, Beast Training, and anything that differs from the data."
+	intro = intro .. "\nGitHub: Copy link, paste into your browser, submit the issue."
+	intro = intro .. "\nChat or issue Notes: Select all, Ctrl+C."
 	if #urls > 1 then
-		intro = intro .. "\nThe report is in " .. #urls .. " parts; use the Part button to switch links and submit each one."
+		intro = intro .. "\nThe GitHub link is in " .. #urls .. " parts; use Part to switch and submit each one."
+		intro = intro .. "\nThe window has the full snapshot; paste that into Notes if a part is differences-only."
 	end
 	intro = intro .. ("\nThe issue holds this text %s (%d characters of link)."):format(
 		compress and "compressed, because it is too long for one readable link" or "as is", linkSize)
 	if test then
 		intro = intro .. "\nTest report: nothing is marked as sent."
 	elseif skipped > 0 then
-		intro = intro .. ("\n%d already-sent entries are hidden; /hpt report all shows them."):format(skipped)
+		intro = intro .. ("\n%d already-sent differences are hidden; /hpt report all shows them."):format(skipped)
 	end
-	local onCopy = not test and function(part)
+
+	local onCopy = not test and parts and function(part)
 		HPT:MarkReportSent(parts[part].sigs)
-	end or nil
-	self:ShowDevText(intro .. "\n\nThis is the text the issue will contain:\n\n" .. table.concat(bodies, "\n\n"), urls, onCopy)
+	end or (not test and function()
+		local sigs = {}
+		for _, e in ipairs(diffEntries) do
+			if e.sig then
+				sigs[e.sig] = true
+			end
+		end
+		HPT:MarkReportSent(sigs)
+	end) or nil
+	self:ShowDevText(intro .. "\n\n" .. header .. "\n\n" .. body, urls, onCopy)
 end
 
 local recorder = CreateFrame("Frame")

@@ -11,6 +11,13 @@ The CurseForge and GitHub release changelog is that section only.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-05
+
+### Changed
+
+- Swipe is learned by taming a Bear that knows it, then trained at Beast Training (Rank 1 is 0 TP)
+- `/hpt report` is one snapshot (pet + Beast Training) with a GitHub issue link; separate Pet/Trainer buttons stay under `/hpt debug`
+
 ## [0.2.2] - 2026-10-04
 
 ### Fixed
@@ -37,7 +44,8 @@ The CurseForge and GitHub release changelog is that section only.
 - EllesmereUI theme support when that addon is installed
 - Custom icon for the AddOns list, title bars, and minimap
 
-[Unreleased]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/releases/tag/v0.2.0

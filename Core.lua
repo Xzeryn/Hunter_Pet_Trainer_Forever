@@ -2,7 +2,7 @@ HunterPetTrainer = HunterPetTrainer or {}
 local HPT = HunterPetTrainer
 local D = HunterPetTrainerData
 
-HPT.VERSION = "0.2.2"
+HPT.VERSION = "0.2.3"
 HPT.ICON = "Interface\\AddOns\\Hunter_Pet_Trainer_Forever\\media\\icon"
 HPT.ADDON_NAME = "Hunter Pet Trainer Forever"
 HPT.MAX_LEVEL = 60
@@ -1074,7 +1074,7 @@ SlashCmdList.HUNTERPETTRAINER = function(msg)
 		HPT:Echo("  /hpt apply <name> - copy a saved template onto Current Pet")
 		HPT:Echo("  /hpt debug - toggle diagnostic chat messages")
 		HPT:Echo("  /hpt dev - developer window with copyable reports")
-		HPT:Echo("  /hpt report - build a GitHub issue link with new trainer data")
+		HPT:Echo("  /hpt report - pet + Beast Training snapshot and a GitHub issue link")
 		HPT:Echo("  /hpt minimap - hide or show the minimap button")
 	elseif msg == "dev" then
 		HPT:ToggleDevWindow()

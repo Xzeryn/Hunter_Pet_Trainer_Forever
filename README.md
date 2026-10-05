@@ -62,7 +62,7 @@ If a planned rank is off screen, Train next hides used and unavailable rows so i
 
 These family abilities have no trainer and no TP cost on Petopia, and seem to be learned with pet level. They're listed under "Unconfirmed: source unknown (info only)" with the pet level for each rank and can't be planned until the game shows how they're learned:
 
-Dismember, Web, Pinch, Swipe, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Sonic Blast, Trickster's Dance.
+Dismember, Web, Pinch, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Sonic Blast, Trickster's Dance.
 
 Faster Attack and Slower Attack are per-species traits, not trainable ranks, and aren't shown.
 
@@ -79,7 +79,7 @@ Faster Attack and Slower Attack are per-species traits, not trainable ranks, and
 | `/hpt delete <name>` | Delete a template |
 | `/hpt apply <name>` | Copy a template onto Current Pet |
 | `/hpt templates` | List templates |
-| `/hpt report` | Build a GitHub issue link with new game data |
+| `/hpt report` | One snapshot of the pet and Beast Training, plus a GitHub issue link |
 | `/hpt report all` | Same, including entries already sent |
 | `/hpt report test` | Report every Beast Training row (for testing; nothing is saved) |
 | `/hpt report clear` | Forget all saved report data and sent marks |
@@ -90,26 +90,13 @@ Faster Attack and Slower Attack are per-species traits, not trainable ranks, and
 
 ## Reporting game data
 
-Whenever Beast Training is open with your pet out, the addon quietly saves anything that differs from its data:
+`/hpt report` (or **Report** in `/hpt dev`) is one snapshot: current pet, spellbook, and every Beast Training row. It turns all trainer filters on for that read, then puts yours back. **Copy link** opens a GitHub issue with the same text; **Select all** / Ctrl+C is for chat or the issue Notes field.
 
-- trainer rows with a different level, cost or spell ID;
-- abilities, ranks or families the data doesn't have;
-- pet spells that aren't in the data;
-- training point totals that don't match the formula.
+The issue also lists anything that still differs from the addon's data (level, cost, spell ID, family, unknown ranks, TP vs formula). Copy link marks those differences as sent so later reports leave them out unless the game shows new values. `/hpt report all` includes sent differences again. Matching snapshots can still be submitted as confirmation.
 
-Tooltip text and icon IDs are saved with each entry.
+Cast Beast Training with the pet out, and open the Character Pet tab once so loyalty is fresh. Very long reports are compressed (`HPTZ1:`; `tools\Read-Reports.ps1` decodes them). If a link still does not fit, **Part** splits it; paste the window text into Notes so the snapshot is not lost.
 
-To send it: type `/hpt report` (or **Report** in `/hpt dev`), click **Copy link**, paste it into your browser and submit the GitHub issue it opens. The text below the link is exactly what the issue will contain. Reports are sent as readable text; one too long for a single link is compressed instead (`tools\Read-Reports.ps1` decodes it), and only if it still doesn't fit is it split into parts (the **Part** button switches links).
-
-Copy link marks those entries as sent, so later reports leave them out unless the game shows different values. `/hpt report all` includes sent entries again. Once the addon's data is updated, entries that now match drop out on their own.
-
-`/hpt dev` also has manual reports you can select and copy (the log survives `/reload`):
-
-- **Trainer**: every Beast Training row with rank, status, cost, level, spell ID and icon, checked against the addon's data.
-- **Tooltips**: the full tooltip text of every Beast Training row.
-- **Pet**: family name, level, loyalty, training points and the pet spellbook with spell IDs and icons.
-
-With `/hpt debug` on, the window also shows **Taint**, **Filter test** and **Events** for diagnosing blocked actions. Blocked actions and "your pet has learned" messages are always logged.
+With `/hpt debug` on, `/hpt dev` also has **Trainer**, **Pet**, **Tooltips**, **Taint**, **Filter test** and **Events**. Blocked actions and "your pet has learned" messages are always logged.
 
 ## Rebuilding ability data
 
