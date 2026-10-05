@@ -140,6 +140,9 @@ function HPT:DevPetReport()
 		Str(_G.PetStableLoyaltyText and _G.PetStableLoyaltyText:GetText()),
 		Str(PetStableFrame and PetStableFrame.loyaltyLevel and PetStableFrame.loyaltyLevel.levelText
 			and PetStableFrame.loyaltyLevel.levelText:GetText()))
+	for _, line in ipairs(self:CollectCPetInfoLines()) do
+		self:DevLog("%s", line)
+	end
 	local stats = UnitExists("pet") and self:GetPetStats()
 	if stats then
 		self:DevLog("Saved stats: loyalty=%s remaining=%s level=%s spent=%s",

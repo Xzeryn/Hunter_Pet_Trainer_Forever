@@ -2,7 +2,7 @@ HunterPetTrainer = HunterPetTrainer or {}
 local HPT = HunterPetTrainer
 local D = HunterPetTrainerData
 
-HPT.VERSION = "0.2.4"
+HPT.VERSION = "0.2.5"
 HPT.ICON = "Interface\\AddOns\\Hunter_Pet_Trainer_Forever\\media\\icon"
 HPT.ADDON_NAME = "Hunter Pet Trainer Forever"
 HPT.MAX_LEVEL = 60
@@ -99,8 +99,7 @@ function HPT:ParseLoyaltyValue(v)
 	return nil
 end
 
--- Per-pet values seen in Blizzard UI, keyed by GetLivePetIdentity().
--- Forever has no loyalty / TP functions, so these survive /reload and pet swaps.
+-- Per-pet values, keyed by GetLivePetIdentity(). Survives /reload and pet swaps.
 function HPT:GetPetStats(identity)
 	identity = identity or self:GetLivePetIdentity()
 	if not identity then
@@ -112,10 +111,24 @@ function HPT:GetPetStats(identity)
 	return db.petStats[identity]
 end
 
--- Forever: the Pet tab's PetLoyaltyText ("Dependable"). It is only refreshed while
--- Blizzard updates the Pet tab, so read it from the SetText hook, not on demand.
-function HPT:RecordPetLoyaltyText(text)
-	local level = self:ParseLoyaltyValue(text)
+function HPT:CallPetInfo(method, ...)
+	local fn = C_PetInfo and C_PetInfo[method]
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, a, b, c = pcall(fn, ...)
+	if not ok then
+		return nil
+	end
+	if issecretvalue then
+		if a ~= nil and issecretvalue(a) then a = nil end
+		if b ~= nil and issecretvalue(b) then b = nil end
+		if c ~= nil and issecretvalue(c) then c = nil end
+	end
+	return a, b, c
+end
+
+function HPT:RecordLoyaltyLevel(level)
 	local stats = level and UnitExists("pet") and self:GetPetStats()
 	if stats and stats.loyalty ~= level then
 		stats.loyalty = level
@@ -123,12 +136,23 @@ function HPT:RecordPetLoyaltyText(text)
 			self:UpdateUI()
 		end
 	end
+	return level
+end
+
+-- Fallback: the Pet tab's PetLoyaltyText is only fresh while that tab is shown.
+function HPT:RecordPetLoyaltyText(text)
+	self:RecordLoyaltyLevel(self:ParseLoyaltyValue(text))
 end
 
 -- Live pet loyalty only. Never falls back to theory / Best Friend.
 function HPT:GetPetLoyaltyLevel()
 	if not UnitExists("pet") then
 		return nil
+	end
+	-- Forever: C_PetInfo.GetPetLoyalty works with the Pet tab closed (confirmed 2026-10-05).
+	local fromApi = self:ParseLoyaltyValue(self:CallPetInfo("GetPetLoyalty"))
+	if fromApi then
+		return self:RecordLoyaltyLevel(fromApi)
 	end
 	local stats = self:GetPetStats()
 	if stats and stats.loyalty then
@@ -157,6 +181,57 @@ function HPT:GetPetLoyaltyLevel()
 		end
 	end
 	return nil
+end
+
+function HPT:CollectCPetInfoLines()
+	local lines = {}
+	local function add(fmt, ...)
+		lines[#lines + 1] = fmt:format(...)
+	end
+	local function describe(v)
+		if v == nil then
+			return "nil"
+		end
+		if issecretvalue and issecretvalue(v) then
+			return "secret (" .. type(v) .. ")"
+		end
+		return tostring(v) .. " (" .. type(v) .. ")"
+	end
+	local function call(fn, ...)
+		if type(fn) ~= "function" then
+			return "missing"
+		end
+		local ok, a, b, c = pcall(fn, ...)
+		if not ok then
+			return "error: " .. tostring(a)
+		end
+		return describe(a) .. ", " .. describe(b) .. ", " .. describe(c)
+	end
+	local loyaltyFS = _G.PetLoyaltyText
+	local parent = loyaltyFS and loyaltyFS:GetParent()
+	add("PetLoyaltyText shown: %s visible: %s | parent: %s shown: %s",
+		tostring(loyaltyFS and loyaltyFS:IsShown()),
+		tostring(loyaltyFS and loyaltyFS:IsVisible()),
+		tostring(parent and parent:GetName()),
+		tostring(parent and parent:IsShown()))
+	if not C_PetInfo then
+		add("C_PetInfo: missing")
+	else
+		local keys = {}
+		for k, v in pairs(C_PetInfo) do
+			keys[#keys + 1] = tostring(k) .. "=" .. type(v)
+		end
+		table.sort(keys)
+		add("C_PetInfo keys: %s", #keys > 0 and table.concat(keys, ", ") or "(empty)")
+		add("  GetPetLoyalty: %s", call(C_PetInfo.GetPetLoyalty))
+		add("  GetPetHappiness: %s", call(C_PetInfo.GetPetHappiness))
+		add("  GetPetTrainingPoints: %s", call(C_PetInfo.GetPetTrainingPoints))
+	end
+	add("GetPetLoyalty(): %s", call(GetPetLoyalty))
+	add("GetPetTrainingPoints(): %s", call(GetPetTrainingPoints))
+	add("UnitLoyalty(pet): %s", call(UnitLoyalty, "pet"))
+	add("GetStablePetInfo(0): %s", call(GetStablePetInfo, 0))
+	return lines
 end
 
 -- Max TP = level * (loyalty - 1); confirmed in the Forever beta (level 10 Dependable = 30).
@@ -725,19 +800,32 @@ function HPT:RecordTrainerPoints()
 end
 
 -- Returns remaining, total, spent, source.
--- source: "trainer" (live label), "cached" (spent from the last trainer visit), "estimate" (nothing seen yet).
+-- source: "api" (C_PetInfo), "trainer" (Beast Training label), "cached", "estimate".
 function HPT:GetPetPoints()
 	if not UnitExists("pet") then
 		return 0, 0, 0, "estimate"
 	end
-	if GetPetTrainingPoints then
-		local total, spent = GetPetTrainingPoints()
-		total = total or 0
-		spent = spent or 0
-		return total - spent, total, spent, "trainer"
-	end
 	local loyalty = self:GetPetLoyaltyLevel()
 	local total = loyalty and self:GetTheoryMaxTP(UnitLevel("pet"), loyalty) or 0
+	-- Forever C_PetInfo.GetPetTrainingPoints first return matches the Beast Training
+	-- remaining label. Second return is not spent (L17 Rebellious was 0, 10).
+	local remaining = tonumber(self:CallPetInfo("GetPetTrainingPoints"))
+	if remaining then
+		local spent = math.max(0, total - remaining)
+		local stats = self:GetPetStats()
+		if stats then
+			stats.remaining = remaining
+			stats.level = UnitLevel("pet")
+			stats.spent = spent
+		end
+		return remaining, total, spent, "api"
+	end
+	if GetPetTrainingPoints then
+		local points, spent = GetPetTrainingPoints()
+		points = points or 0
+		spent = spent or 0
+		return points - spent, points, spent, "trainer"
+	end
 	local live = self:GetTrainerPointsRemaining()
 	if live then
 		local liveTotal = loyalty and total or live
@@ -981,6 +1069,7 @@ for _, event in ipairs({
 	"PLAYER_LOGIN",
 	"UNIT_PET",
 	"UNIT_PET_TRAINING_POINTS",
+	"PET_UI_UPDATE",
 	"PET_BAR_UPDATE",
 	"SPELLS_CHANGED",
 	"TRAINER_SHOW",
@@ -1040,7 +1129,8 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 				HPT:UpdateUI()
 			end
 		end)
-	elseif event == "UNIT_PET_TRAINING_POINTS" or event == "PET_BAR_UPDATE" or event == "SPELLS_CHANGED" then
+	elseif event == "UNIT_PET_TRAINING_POINTS" or event == "PET_UI_UPDATE"
+		or event == "PET_BAR_UPDATE" or event == "SPELLS_CHANGED" then
 		-- Pet book often populates after UNIT_PET; re-clamp trained floors
 		if (event == "PET_BAR_UPDATE" or event == "SPELLS_CHANGED") and UnitExists("pet") then
 			HPT:SyncCurrentPetPlanFromPet(false)

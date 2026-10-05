@@ -4,7 +4,7 @@
 
 Plan hunter pet training and train it step by step in **World of Warcraft: Forever** (Classic Era based, level cap 60, interface `16001`).
 
-Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templates are the same; everything that talks to the game is new, because Forever moved Beast Training into the trainer window and removed the pet loyalty and training point functions.
+Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templates are the same; everything that talks to the game is new, because Forever moved Beast Training into the trainer window and replaced the old pet loyalty and training point functions.
 
 ## Features
 
@@ -13,7 +13,7 @@ Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templ
 - **Ability grid**: Active, Passive, info-only and not-for-this-family rows with TP costs; trained and planned ranks are colored.
 - **Docked planner**: opens beside the Beast Training window and closes with it.
 - **Train next button**: two presses per rank. The first selects the planned row in Blizzard's list, the second clicks Train. The planned row is highlighted.
-- **Live training points and loyalty**, read from the Beast Training window and the Pet tab, remembered per pet.
+- **Live training points and loyalty**, read from the summoned pet (and Beast Training when it is open), remembered per pet.
 - **Minimap button**: left-click for the planner, right-click for data reports, drag to move.
 - **EllesmereUI theme** when EllesmereUI is installed (toggle under Blizz UI Enhanced > Blizzard Window Skins > Third-Party Addons).
 
@@ -21,8 +21,7 @@ Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templ
 
 1. Copy the `Hunter_Pet_Trainer_Forever` folder into your Forever client's `Interface\AddOns` folder.
 2. Restart the game.
-3. Open the Pet tab of the Character window once, so the addon can read your pet's loyalty.
-4. Cast **Beast Training**, or type `/hpt`.
+3. Cast **Beast Training**, or type `/hpt`.
 
 ## How to use
 
@@ -54,7 +53,7 @@ If a planned rank is off screen, pressing Train next hides used and unavailable 
 
 - **Training needs your clicks.** Forever blocks addons from choosing a trainer row or pressing Train. The Train next button works because it is a secure click of Blizzard's own row and Train button.
 - **Beast Training stays visible.** The planner docks beside it instead of replacing it, since the button has to click Blizzard's rows.
-- **Training points away from the trainer are the last value seen there.** The number turns grey; hover it for details. Max TP = pet level × (loyalty level − 1).
+- **Training points stay live while the pet is out.** Max TP = pet level × (loyalty level − 1).
 - **Beast Training charges the upgrade cost.** With rank 1 known, rank 2 costs the difference (Great Stamina 2 = 10 − 5 = 5 TP).
 - **No Wowhead import yet.** Wowhead has no Forever pet calculator.
 
@@ -94,7 +93,7 @@ Faster Attack and Slower Attack are per-species traits, not trainable ranks, and
 
 The issue also lists anything that still differs from the addon's data (level, cost, spell ID, family, unknown ranks, TP vs formula). Copy link marks those differences as sent so later reports leave them out unless the game shows new values. `/hpt report all` includes sent differences again. Matching snapshots can still be submitted as confirmation.
 
-Cast Beast Training with the pet out, and open the Character Pet tab once so loyalty is fresh. Very long reports are compressed (`HPTZ1:`; `tools\Read-Reports.ps1` decodes them). If a link still does not fit, **Part** splits it; paste the window text into Notes so the snapshot is not lost.
+Cast Beast Training with the pet out. Very long reports are compressed (`HPTZ1:`; `tools\Read-Reports.ps1` decodes them). If a link still does not fit, **Part** splits it; paste the window text into Notes so the snapshot is not lost.
 
 With `/hpt debug` on, `/hpt dev` also has **Trainer**, **Pet**, **Tooltips**, **Taint**, **Filter test** and **Events**. Blocked actions from this addon, and "your pet has learned" messages, are always logged.
 

@@ -1378,7 +1378,7 @@ function HPT:UpdateUI()
 		self.frame.tpNote = nil
 		if self.frame.tpValue then
 			if not isCurrent or UnitExists("pet") then
-				local live = not isCurrent or pointsSource == "trainer"
+				local live = not isCurrent or pointsSource == "trainer" or pointsSource == "api"
 				local usedColor = overBudget and "ff4444" or (live and "ffffff" or "999999")
 				local maxColor = live and "" or "|cff999999"
 				self.frame.tpValue:SetText(("|cff%s%d|r / %s%d|r"):format(usedColor, used, maxColor, maxTP))

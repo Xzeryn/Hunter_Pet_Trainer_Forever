@@ -11,6 +11,12 @@ The CurseForge and GitHub release changelog is that section only.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-05
+
+### Changed
+
+- Loyalty and remaining training points are read while the pet is summoned; opening the Character Pet tab is no longer required
+
 ## [0.2.4] - 2026-10-05
 
 ### Changed
@@ -57,7 +63,8 @@ The CurseForge and GitHub release changelog is that section only.
 - EllesmereUI theme support when that addon is installed
 - Custom icon for the AddOns list, title bars, and minimap
 
-[Unreleased]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.1...v0.2.2

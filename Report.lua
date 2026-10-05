@@ -500,6 +500,9 @@ function HPT:CollectPetSnapshotLines()
 		Str(_G.PetStableLoyaltyText and _G.PetStableLoyaltyText:GetText()),
 		Str(PetStableFrame and PetStableFrame.loyaltyLevel and PetStableFrame.loyaltyLevel.levelText
 			and PetStableFrame.loyaltyLevel.levelText:GetText()))
+	for _, line in ipairs(self:CollectCPetInfoLines()) do
+		add("%s", line)
+	end
 	local stats = self:GetPetStats()
 	if stats then
 		add("Saved stats: loyalty=%s remaining=%s level=%s spent=%s",
@@ -755,7 +758,7 @@ function HPT:ShowDataReport(mode)
 	local header = ("HPT %s | build %s | interface %s | %s%s"):format(
 		self.VERSION, Str(build), Str(toc), date("%Y-%m-%d"), test and " | TEST" or "")
 	if UnitExists("pet") and not self:GetPetLoyaltyLevel() then
-		header = header .. "\n(loyalty unknown: open the Pet tab of the Character window, then Beast Training)"
+		header = header .. "\n(loyalty unknown: C_PetInfo.GetPetLoyalty returned nothing; open the Pet tab as a fallback)"
 	elseif not UnitExists("pet") then
 		header = header .. "\n(no pet summoned: family and live TP costs are missing; summon the pet and Report again)"
 	end
