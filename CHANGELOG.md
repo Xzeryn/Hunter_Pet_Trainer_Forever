@@ -11,6 +11,19 @@ The CurseForge and GitHub release changelog is that section only.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-05
+
+### Changed
+
+- Web is learned by taming a Spider that knows it, then trained at Beast Training
+- `/hpt report` includes family coverage (data vs spellbook vs Beast Training) and recent learned messages from tames and training
+
+### Fixed
+
+- The report log only records blocked actions from this addon, not other addons such as action-bar skins
+- Used and unavailable Beast Training filters stay as you set them until you press Train next
+- Minimap right-click opens the data snapshot, not the empty developer window
+
 ## [0.2.3] - 2026-10-05
 
 ### Changed
@@ -44,7 +57,8 @@ The CurseForge and GitHub release changelog is that section only.
 - EllesmereUI theme support when that addon is installed
 - Custom icon for the AddOns list, title bars, and minimap
 
-[Unreleased]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Xzeryn/Hunter_Pet_Trainer_Forever/compare/v0.2.0...v0.2.1

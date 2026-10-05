@@ -446,11 +446,18 @@ always:SetScript("OnEvent", function(_, event, ...)
 	if event == "CHAT_MSG_SYSTEM" then
 		local msg = ...
 		if msg and msg:find("learned") then
+			if HPT.RecordLearnedMessage then
+				HPT:RecordLearnedMessage(msg)
+			end
 			HPT:DevLog("TRAINED: %s", msg)
 		end
-	else
-		HPT:DevLog("BLOCKED (%s): %s", event, Join(...))
+		return
 	end
+	local addon = ...
+	if addon ~= "Hunter_Pet_Trainer_Forever" then
+		return
+	end
+	HPT:DevLog("BLOCKED (%s): %s", event, Join(...))
 end)
 
 local watcher = CreateFrame("Frame")

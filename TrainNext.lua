@@ -125,7 +125,7 @@ local function ApplyMode()
 	end
 end
 
-function HPT:RefreshTrainNext()
+function HPT:RefreshTrainNext(allowFilterAssist)
 	if not button or not button:IsVisible() or InCombatLockdown() then
 		return
 	end
@@ -149,9 +149,10 @@ function HPT:RefreshTrainNext()
 	end
 	target = { ability = step.ability, rank = step.trainRank, row = self:FindTrainerRowButton(step.ability, step.trainRank) }
 
-	if not target.row then
-		-- Available-only shrinks the list without tainting Train. ScrollBox
-		-- scroll APIs do taint selectedService — never call those here.
+	-- Only when the player presses Train next: available-only can put the
+	-- rank on screen. Do not do this on the refresh timer — that fights
+	-- anyone turning used/unavailable back on.
+	if not target.row and allowFilterAssist then
 		if self:ShowAvailableTrainerFilters() then
 			target.row = self:FindTrainerRowButton(target.ability, target.rank)
 		end
@@ -220,13 +221,18 @@ function HPT:CreateTrainNextButton(parent)
 	button:SetPoint("RIGHT", parent, "RIGHT", -8, 0)
 	button:RegisterForClicks(CLICK_HALF)
 	button:SetAttribute("type", "click")
+	button:SetScript("PreClick", function()
+		if not InCombatLockdown() then
+			HPT:RefreshTrainNext(true)
+		end
+	end)
 	button:HookScript("PostClick", OnPostClick)
 	button:SetMotionScriptsWhileDisabled(true)
 	button:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("Train next planned rank")
 		GameTooltip:AddLine("Press once to select the highlighted row, then again to click Train.", 1, 1, 1, true)
-		GameTooltip:AddLine("If the row is still off screen, scroll the Beast Training list to it.", 0.8, 0.8, 0.8, true)
+		GameTooltip:AddLine("If the rank is off screen, that press shows only available rows so it can reach it. Scroll if it still is not visible.", 0.8, 0.8, 0.8, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)

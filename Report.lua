@@ -95,7 +95,9 @@ function HPT:CheckObservedRow(r)
 	local issues = {}
 	local info = D.Abilities[r.ability]
 	if not D.Families[r.family] then
-		issues[#issues + 1] = "NEW FAMILY"
+		if r.family and r.family ~= "?" then
+			issues[#issues + 1] = "NEW FAMILY"
+		end
 	end
 	if not info then
 		issues[#issues + 1] = "NEW ABILITY"
@@ -509,8 +511,8 @@ function HPT:CollectPetSnapshotLines()
 	local book = self:GetPetSpellbook()
 	local spells = {}
 	for _, s in ipairs(book) do
-		if s.spellId then
-			local mapped = self:RankForSpellId(s.spellId)
+		if s.spellId or (s.name and D.Abilities[s.name]) then
+			local mapped = s.spellId and self:RankForSpellId(s.spellId)
 			spells[#spells + 1] = ("%s | %s | %s | %s"):format(
 				Str(s.name), Str(s.sub), Str(s.spellId),
 				mapped and (mapped.ability .. " " .. mapped.rank) or "-")
@@ -548,11 +550,15 @@ function HPT:CollectTrainerSnapshotLines()
 		return lines
 	end
 	local filters, allOn = self:GetTrainerFilterState()
+	local f = _G.ClassTrainerFrame
+	local title = f and ((f.TitleContainer and f.TitleContainer.TitleText) or f.TitleText or _G.ClassTrainerFrameTitleText)
+	add("Window: %s | pet out: %s", Str(title and title:GetText()), UnitExists("pet") and "yes" or "NO — summon the pet; family/cost checks need it")
 	add("Filters: used=%s available=%s unavailable=%s (all on: %s) | services=%s | TP remaining=%s",
 		Str(filters.used), Str(filters.available), Str(filters.unavailable), Str(allOn),
 		Str(GetNumTrainerServices()), Str(self:GetTrainerPointsRemaining()))
 	add("idx | name | rank | status | cost TP | req | spellId | vs data")
-	local petRanks = self:GetPetKnownRanks()
+	local petOut = UnitExists("pet")
+	local petRanks = petOut and self:GetPetKnownRanks() or {}
 	for i = 1, GetNumTrainerServices() or 0 do
 		local name, status, _, reqLevel, rankText = GetTrainerServiceInfo(i)
 		if name and status ~= "header" then
@@ -572,7 +578,7 @@ function HPT:CollectTrainerSnapshotLines()
 				icon = nil,
 				known = petRanks[name] or 0,
 			}
-			local issues = self:CheckObservedRow(r)
+			local issues = petOut and self:CheckObservedRow(r) or {}
 			local vs
 			if not D.Abilities[name] then
 				vs = "not in data"
@@ -592,7 +598,110 @@ function HPT:CollectTrainerSnapshotLines()
 	return lines
 end
 
-local function SnapshotText(petLines, trainerLines, filterNote)
+function HPT:RecordLearnedMessage(msg)
+	if type(msg) ~= "string" or not msg:find("learned") then
+		return
+	end
+	local db = self:GetDB()
+	db.learnedLog = db.learnedLog or {}
+	db.learnedLog[#db.learnedLog + 1] = date("%H:%M:%S") .. "  " .. msg
+	while #db.learnedLog > 40 do
+		table.remove(db.learnedLog, 1)
+	end
+end
+
+function HPT:CollectLearnedLogLines()
+	local log = self:GetDB().learnedLog
+	if not log or #log == 0 then
+		return { "(no learned messages yet this session — tame or train first, then Report)" }
+	end
+	local lines = {}
+	local start = math.max(1, #log - 19)
+	for i = start, #log do
+		lines[#lines + 1] = log[i]
+	end
+	return lines
+end
+
+function HPT:CollectFamilyCoverageLines()
+	local lines = {}
+	local function add(fmt, ...)
+		lines[#lines + 1] = fmt:format(...)
+	end
+	if not UnitExists("pet") then
+		add("Summon the pet. This list is data vs spellbook vs Beast Training for the current family.")
+		return lines
+	end
+	local family = UnitCreatureFamily("pet") or "?"
+	add("Family: %s | pet L%s", family, Str(UnitLevel("pet")))
+	local trainer = {}
+	if self:IsBeastTrainingOpen() then
+		for i = 1, GetNumTrainerServices() or 0 do
+			local name, status, _, _, rankText = GetTrainerServiceInfo(i)
+			if name and status ~= "header" then
+				local rank = tonumber((rankText or ""):match("(%d+)"))
+				local row = ("R%s %s %s TP"):format(Str(rank), Str(status), Str(GetTrainerServiceCost(i)))
+				if trainer[name] then
+					trainer[name] = trainer[name] .. "; " .. row
+				else
+					trainer[name] = row
+				end
+			end
+		end
+	else
+		add("Beast Training is not open, so trainer column is empty. Cast Beast Training (the hunter spell), not the city pet-trainer NPC.")
+	end
+	local book = {}
+	for _, s in ipairs(self:GetPetSpellbook()) do
+		if s.name and (s.spellId or D.Abilities[s.name]) then
+			local mapped = s.spellId and self:RankForSpellId(s.spellId)
+			local bit = ("%s spell %s"):format(Str(s.sub), Str(s.spellId))
+			if mapped then
+				bit = mapped.ability .. " " .. mapped.rank .. " | " .. bit
+			end
+			if book[s.name] then
+				book[s.name] = book[s.name] .. "; " .. bit
+			else
+				book[s.name] = bit
+			end
+		end
+	end
+	local seen, names = {}, {}
+	local function addName(n)
+		if n and not seen[n] then
+			seen[n] = true
+			names[#names + 1] = n
+		end
+	end
+	if D.Families[family] then
+		for _, n in ipairs(D.Families[family]) do
+			addName(n)
+		end
+	end
+	for _, n in ipairs(D.AbilityOrder or {}) do
+		local info = D.Abilities[n]
+		if info and self:AbilityAvailableForFamily(n, family) and info.source == "trainer" then
+			addName(n)
+		end
+	end
+	addName("Growl")
+	addName("Cower")
+	for n in pairs(trainer) do
+		addName(n)
+	end
+	for n in pairs(book) do
+		addName(n)
+	end
+	add("ability | data | spellbook | beast training")
+	for _, name in ipairs(names) do
+		local info = D.Abilities[name]
+		local data = info and info.source or "not in data"
+		add("%s | %s | %s | %s", name, data, book[name] or "not on pet", trainer[name] or "not listed")
+	end
+	return lines
+end
+
+local function SnapshotText(petLines, trainerLines, coverageLines, learnedLines, filterNote)
 	local chunks = { "## Pet" }
 	for _, line in ipairs(petLines) do
 		chunks[#chunks + 1] = line
@@ -603,6 +712,16 @@ local function SnapshotText(petLines, trainerLines, filterNote)
 		chunks[#chunks + 1] = filterNote
 	end
 	for _, line in ipairs(trainerLines) do
+		chunks[#chunks + 1] = line
+	end
+	chunks[#chunks + 1] = ""
+	chunks[#chunks + 1] = "## Family coverage"
+	for _, line in ipairs(coverageLines or {}) do
+		chunks[#chunks + 1] = line
+	end
+	chunks[#chunks + 1] = ""
+	chunks[#chunks + 1] = "## Learned"
+	for _, line in ipairs(learnedLines or {}) do
 		chunks[#chunks + 1] = line
 	end
 	return table.concat(chunks, "\n")
@@ -618,7 +737,7 @@ function HPT:ShowDataReport(mode)
 	end
 
 	local o = test and Scratch() or nil
-	local filterNote, petLines, trainerLines
+	local filterNote, petLines, trainerLines, coverageLines
 	self:WithAllTrainerFilters(function(_, previous)
 		if previous and not (previous.used and previous.available and previous.unavailable) then
 			filterNote = ("Filters were used=%s available=%s unavailable=%s; snapshot used all on, then restored."):format(
@@ -627,7 +746,9 @@ function HPT:ShowDataReport(mode)
 		self:RecordObservations(o)
 		petLines = self:CollectPetSnapshotLines()
 		trainerLines = self:CollectTrainerSnapshotLines()
+		coverageLines = self:CollectFamilyCoverageLines()
 	end)
+	local learnedLines = self:CollectLearnedLogLines()
 
 	local diffEntries, skipped = self:BuildDataReportLines(o, mode == "all")
 	local _, build, _, toc = GetBuildInfo()
@@ -635,9 +756,11 @@ function HPT:ShowDataReport(mode)
 		self.VERSION, Str(build), Str(toc), date("%Y-%m-%d"), test and " | TEST" or "")
 	if UnitExists("pet") and not self:GetPetLoyaltyLevel() then
 		header = header .. "\n(loyalty unknown: open the Pet tab of the Character window, then Beast Training)"
+	elseif not UnitExists("pet") then
+		header = header .. "\n(no pet summoned: family and live TP costs are missing; summon the pet and Report again)"
 	end
 
-	local snapshot = SnapshotText(petLines, trainerLines, filterNote)
+	local snapshot = SnapshotText(petLines, trainerLines, coverageLines, learnedLines, filterNote)
 	local diffText = {}
 	for _, e in ipairs(diffEntries) do
 		diffText[#diffText + 1] = e.text

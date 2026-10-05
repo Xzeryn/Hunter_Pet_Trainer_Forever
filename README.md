@@ -33,7 +33,7 @@ Ported from Hunter Pet Trainer v0.5.9 for TBC Anniversary. The planner and templ
 3. Click ranks to plan them (green = planned, blue = already trained).
 4. Press **Train next** twice per rank: once to select it, once to train it. The footer shows what's next.
 
-If a planned rank is off screen, Train next hides used and unavailable rows so it can reach it. If the button still reads "Scroll to …", scroll the Beast Training list to that rank. Your filter choices come back when Beast Training closes.
+If a planned rank is off screen, pressing Train next hides used and unavailable rows so it can reach it. If the button still reads "Scroll to …", scroll the Beast Training list to that rank. Your unused/unavailable ticks are left alone until you press the button. They come back when Beast Training closes.
 
 ### Plan with templates
 
@@ -62,7 +62,7 @@ If a planned rank is off screen, Train next hides used and unavailable rows so i
 
 These family abilities have no trainer and no TP cost on Petopia, and seem to be learned with pet level. They're listed under "Unconfirmed: source unknown (info only)" with the pet level for each rank and can't be planned until the game shows how they're learned:
 
-Dismember, Web, Pinch, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Sonic Blast, Trickster's Dance.
+Dismember, Pinch, Savage Rend, Tendon Rip, Dust Cloud, Mine!, Lava Breath, Sonic Blast, Trickster's Dance.
 
 Faster Attack and Slower Attack are per-species traits, not trainable ranks, and aren't shown.
 
@@ -90,13 +90,13 @@ Faster Attack and Slower Attack are per-species traits, not trainable ranks, and
 
 ## Reporting game data
 
-`/hpt report` (or **Report** in `/hpt dev`) is one snapshot: current pet, spellbook, and every Beast Training row. It turns all trainer filters on for that read, then puts yours back. **Copy link** opens a GitHub issue with the same text; **Select all** / Ctrl+C is for chat or the issue Notes field.
+`/hpt report` (or **Report** in `/hpt dev`) is one snapshot: current pet, spellbook, Beast Training, this family's data vs what the game shows, and recent "you/your pet learned" messages. It turns all trainer filters on for that read, then puts yours back. **Copy link** opens a GitHub issue with the same text; **Select all** / Ctrl+C is for chat or the issue Notes field.
 
 The issue also lists anything that still differs from the addon's data (level, cost, spell ID, family, unknown ranks, TP vs formula). Copy link marks those differences as sent so later reports leave them out unless the game shows new values. `/hpt report all` includes sent differences again. Matching snapshots can still be submitted as confirmation.
 
 Cast Beast Training with the pet out, and open the Character Pet tab once so loyalty is fresh. Very long reports are compressed (`HPTZ1:`; `tools\Read-Reports.ps1` decodes them). If a link still does not fit, **Part** splits it; paste the window text into Notes so the snapshot is not lost.
 
-With `/hpt debug` on, `/hpt dev` also has **Trainer**, **Pet**, **Tooltips**, **Taint**, **Filter test** and **Events**. Blocked actions and "your pet has learned" messages are always logged.
+With `/hpt debug` on, `/hpt dev` also has **Trainer**, **Pet**, **Tooltips**, **Taint**, **Filter test** and **Events**. Blocked actions from this addon, and "your pet has learned" messages, are always logged.
 
 ## Rebuilding ability data
 

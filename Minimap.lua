@@ -1,6 +1,6 @@
 local HPT = HunterPetTrainer
 
--- Minimap button: left-click toggles the planner, right-click the dev window.
+-- Minimap button: left-click toggles the planner, right-click the data report.
 -- Drag to move around the minimap; /hpt minimap hides or shows it.
 
 local DEFAULT_ANGLE = 215
@@ -62,7 +62,7 @@ function HPT:CreateMinimapButton()
 
 	btn:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then
-			HPT:ToggleDevWindow()
+			HPT:ShowDataReport()
 		else
 			HPT:ToggleUI()
 		end
@@ -77,7 +77,7 @@ function HPT:CreateMinimapButton()
 		GameTooltip:SetOwner(b, "ANCHOR_LEFT")
 		GameTooltip:AddLine(HPT.ADDON_NAME)
 		GameTooltip:AddLine("Left-click: planner", 1, 1, 1)
-		GameTooltip:AddLine("Right-click: report window", 1, 1, 1)
+		GameTooltip:AddLine("Right-click: data report", 1, 1, 1)
 		GameTooltip:AddLine("Drag: move", 0.7, 0.7, 0.7)
 		GameTooltip:Show()
 	end)

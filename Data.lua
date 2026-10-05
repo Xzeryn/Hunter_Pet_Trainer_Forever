@@ -376,7 +376,7 @@ D.Abilities = {
   },
   ["Web"] = {
     active = true,
-    source = "innate",
+    source = "wild",
     families = { "Spider" },
     ranks = {
       [1] = { level = 12, cost = 0, spellId = 1265843 },

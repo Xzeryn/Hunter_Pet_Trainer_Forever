@@ -42,6 +42,7 @@ $FamilyOverrides = @{
 # In-game Beast Training overrides Petopia's "no known training source" → innate.
 $SourceOverrides = @{
 	"Swipe" = "wild"  # 2026-10-05: hunter learned from a tamed Bear; Rank 1 listed at 0 TP
+	"Web" = "wild"    # 2026-10-05: hunter learned from a tamed Spider
 }
 
 $FamilyNames = @{
@@ -88,7 +89,8 @@ $TrainerChecks = @(
 	@("Claw", 2, 8, 4, 0),
 	@("Growl", 1, 1, 0, 0),
 	@("Growl", 2, 10, 0, 0),
-	@("Swipe", 1, 12, 0, 1264494)
+	@("Swipe", 1, 12, 0, 1264494),
+	@("Web", 1, 12, 0, 1265843)
 )
 
 $Warnings = New-Object System.Collections.Generic.List[string]
